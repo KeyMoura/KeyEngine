@@ -2,7 +2,7 @@
 
 KeyEngine is a modular, plugin-driven runtime framework built with C# and .NET.
 
-Unlike traditional game engines, KeyEngine is designed to power a wide range of applications including:
+KeyEngine is designed to power a wide range of applications including:
 
 - Games
 - Dedicated servers
