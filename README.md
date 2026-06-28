@@ -28,7 +28,7 @@ Unlike traditional game engines, KeyEngine is designed to power a wide range of 
 
 KeyEngine is currently in active development.
 
-The public API may change as the framework evolves.
+The public API may change as the framework development continues.
 
 ## License
 
