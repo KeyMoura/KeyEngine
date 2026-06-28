@@ -1,0 +1,281 @@
+﻿using KeyEngine.Commands;
+using KeyEngine.Events;
+using KeyEngine.Events.Models;
+using KeyEngine.Logging;
+using KeyEngine.Metadata;
+using KeyEngine.Plugins;
+using KeyEngine.Reflection;
+using KeyEngine.Scheduler;
+using KeyEngine.Services;
+using KeyEngine.Systems;
+using KeyEngine.Timers;
+using System.Reflection;
+
+namespace KeyEngine.Core;
+
+/// <summary>
+/// Represents the core runtime of KeyEngine.
+/// </summary>
+/// <remarks>
+/// The <see cref="Engine"/> is responsible for managing the engine lifecycle,
+/// including initialization, execution, and shutdown. Engine instances should
+/// be created through the <see cref="EngineBuilder"/>.
+/// </remarks>
+public sealed class Engine
+{
+    private readonly TypeScanner _typeScanner = new();
+    private readonly SystemRegistry _systemRegistry = new();
+    private readonly ServiceCollection _services = new();
+    private IServiceResolver? _serviceProvider;
+    private readonly ScanResult _scanResult = new();
+    private readonly EngineOptions _options;
+    private readonly Scheduler.Scheduler _scheduler;
+    private readonly EventBus _eventBus;
+    private readonly CommandManager _commandManager;
+    private readonly PluginManager _pluginManager = new();
+    private readonly TimerManager _timerManager;
+    private readonly PluginManifestLoader _manifestLoader = new();
+    private readonly PluginContextFactory _contextFactory = new();
+
+    /// <summary>
+    /// Gets the current execution state of the engine.
+    /// </summary>
+    public EngineState State { get; private set; } = EngineState.Stopped;
+
+    /// <summary>
+    /// Gets the engine event bus.
+    /// </summary>
+    public EventBus Events => _eventBus;
+
+    /// <summary>
+    /// Gets the engine command manager.
+    /// </summary>
+    public CommandManager Commands => _commandManager;
+
+    /// <summary>
+    /// Gets the engine metadata.
+    /// </summary>
+    public ApplicationInfo Info => _options.Info;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Engine"/> class.
+    /// </summary>
+    /// <param name="options">
+    /// The engine configuration.
+    /// </param>
+    internal Engine(EngineOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        _options = options;
+
+        _eventBus = new EventBus(_systemRegistry);
+
+        _scheduler = new Scheduler.Scheduler(options.Scheduler);
+
+        _commandManager = new CommandManager(
+            _systemRegistry,
+            _eventBus);
+
+        _timerManager = new TimerManager();
+
+        _services.AddSingleton<Engine>(this);
+
+        _services.AddSingleton(_eventBus);
+
+        _services.AddSingleton(_commandManager);
+        _services.AddSingleton(_timerManager);
+    }
+
+    /// <summary>
+    /// Starts the engine lifecycle.
+    /// </summary>
+    public void Run()
+    {
+        try
+        {
+            Initialize();
+
+            MainLoop();
+        }
+        finally
+        {
+            Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// Initializes the engine and its registered systems.
+    /// </summary>
+    private void Initialize()
+    {
+        State = EngineState.Initializing;
+
+        Log.Info("Initializing...");
+
+        _pluginManager.Load(
+            _options.PluginDirectory);
+
+        foreach (LoadedPlugin plugin in
+            _pluginManager.Plugins)
+        {
+            Log.Info(
+                $"Loaded plugin '{plugin.Manifest.Name}' v{plugin.Manifest.Version}");
+
+            PluginBuilder builder =
+                _pluginManager.GetBuilder(plugin);
+
+            foreach (Type system in builder.Systems)
+            {
+                Log.Info(
+                    $"Plugin '{plugin.Instance.GetType().Name}' registered system '{system.Name}'.");
+
+                _scanResult.AddRange(
+                    _typeScanner.Scan(system));
+            }
+
+
+            foreach (ServiceDescriptor service
+                in builder.Services.Services)
+            {
+                _services.Add(service);
+            }
+        }
+
+        foreach (Assembly assembly in _options.Assemblies)
+        {
+            ScanResult result =
+                _typeScanner.Scan(assembly);
+
+            _scanResult.AddRange(result);
+
+            _services.AddSingletonRange(
+                result.Systems);
+        }
+
+        foreach (EventListenerMetadata listener in _scanResult.EventListeners)
+        {
+            _eventBus.Register(listener);
+        }
+
+        foreach (CommandMetadata command in _scanResult.Commands)
+        {
+            _commandManager.Register(command);
+        }
+
+        _serviceProvider = _services.Build();
+
+        _systemRegistry.SetServices(
+            _serviceProvider);
+
+        InvokeMethods(MethodKind.Startup);
+
+        _scheduler.Start();
+    }
+
+    /// <summary>
+    /// Executes the engine's primary runtime loop.
+    /// </summary>
+    private void MainLoop()
+    {
+        State = EngineState.Running;
+
+        Log.Info("Running...");
+
+        while (State == EngineState.Running)
+        {
+            _scheduler.BeginFrame();
+
+            _timerManager.Update(
+                _scheduler.DeltaTime);
+
+            InvokeMethods(MethodKind.Update);
+
+            while (_scheduler.ShouldRunFixedUpdate())
+            {
+                InvokeMethods(MethodKind.FixedUpdate);
+            }
+
+            _scheduler.EndFrame();
+        }
+    }
+
+    /// <summary>
+    /// Requests that the engine stop running.
+    /// </summary>
+    public void Stop()
+    {
+        if (State == EngineState.Running)
+        {
+            State = EngineState.Stopped;
+        }
+    }
+
+    /// <summary>
+    /// Shuts down the engine and performs cleanup.
+    /// </summary>
+    private void Shutdown()
+    {
+        State = EngineState.ShuttingDown;
+
+        Log.Info("Shutting down...");
+
+        InvokeMethods(MethodKind.Shutdown);
+
+        State = EngineState.Stopped;
+    }
+
+    /// <summary>
+    /// Invokes all methods of the specified kind.
+    /// </summary>
+    /// <param name="kind">
+    /// The method kind.
+    /// </param>
+    private void InvokeMethods(MethodKind kind)
+    {
+        foreach (MethodMetadata method in _scanResult.GetMethods(kind))
+        {
+            object instance =
+                _systemRegistry.GetOrCreate(method.DeclaringType);
+
+            if (method.ParameterTypes.Count == 0)
+            {
+                method.Invoker.Invoke(instance);
+                continue;
+            }
+
+            object? argument = CreateArgument(method);
+
+            method.Invoker.Invoke(instance, argument);
+        }
+    }
+
+    /// <summary>
+    /// Creates the argument supplied to an engine method.
+    /// </summary>
+    /// <param name="method">
+    /// The method metadata.
+    /// </param>
+    /// <returns>
+    /// The created argument.
+    /// </returns>
+    /// <exception cref="NotSupportedException">
+    /// Thrown when the parameter type is not supported.
+    /// </exception>
+    private object CreateArgument(MethodMetadata method)
+    {
+        if (method.ParameterTypes.Count == 1 &&
+            method.ParameterTypes[0] == typeof(UpdateContext))
+        {
+            return new UpdateContext
+            {
+                FrameNumber = _scheduler.FrameNumber,
+                DeltaTime = _scheduler.DeltaTime,
+                ElapsedTime = _scheduler.ElapsedTime
+            };
+        }
+
+        throw new NotSupportedException(
+            $"Unsupported parameter signature.");
+    }
+}
