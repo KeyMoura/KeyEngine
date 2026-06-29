@@ -1,5 +1,6 @@
 ﻿using KeyEngine.Commands;
 using KeyEngine.Configuration;
+using KeyEngine.Diagnostics;
 using KeyEngine.Events;
 using KeyEngine.Events.Models;
 using KeyEngine.IO;
@@ -54,10 +55,24 @@ public sealed class Engine
     /// </summary>
     public CommandManager Commands => _commandManager;
 
+    public EngineDiagnostics Diagnostics { get; }
+
     /// <summary>
     /// Gets the engine metadata.
     /// </summary>
     public ApplicationInfo Info => _options.Info;
+
+    internal Scheduler.Scheduler Scheduler =>
+    _scheduler;
+
+    internal PluginManager PluginManager =>
+        _pluginManager;
+
+    internal ScanResult ScanResult =>
+        _scanResult;
+
+    internal TimerManager TimerManager =>
+        _timerManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Engine"/> class.
@@ -81,6 +96,8 @@ public sealed class Engine
 
         _timerManager = new TimerManager();
 
+        Diagnostics = new EngineDiagnostics(this);
+
         _services.AddSingleton<Engine>(this);
 
         _services.AddSingleton(_eventBus);
@@ -98,10 +115,6 @@ public sealed class Engine
         try
         {
             Initialize();
-
-            State = EngineState.Running;
-
-            Log.Info("Running...");
 
             while (State == EngineState.Running)
             {
@@ -187,6 +200,10 @@ public sealed class Engine
         InvokeMethods(MethodKind.Startup);
 
         _scheduler.Start();
+
+        State = EngineState.Running;
+
+        Log.Info("Running...");
     }
 
     /// <summary>
