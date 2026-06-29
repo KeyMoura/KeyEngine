@@ -1,4 +1,4 @@
-﻿namespace KeyEngine.Graphs;
+﻿namespace KeyEngine.Numerics;
 
 /// <summary>
 /// Represents a two-dimensional graph.

@@ -1,6 +1,8 @@
 ﻿using KeyEngine.Commands;
+using KeyEngine.Configuration;
 using KeyEngine.Events;
 using KeyEngine.Events.Models;
+using KeyEngine.IO;
 using KeyEngine.Logging;
 using KeyEngine.Metadata;
 using KeyEngine.Plugins;
@@ -85,6 +87,7 @@ public sealed class Engine
 
         _services.AddSingleton(_commandManager);
         _services.AddSingleton(_timerManager);
+        _services.AddSingleton<IFileSystem, PhysicalFileSystem>();
     }
 
     /// <summary>
@@ -96,7 +99,14 @@ public sealed class Engine
         {
             Initialize();
 
-            MainLoop();
+            State = EngineState.Running;
+
+            Log.Info("Running...");
+
+            while (State == EngineState.Running)
+            {
+                Tick();
+            }
         }
         finally
         {
@@ -107,8 +117,14 @@ public sealed class Engine
     /// <summary>
     /// Initializes the engine and its registered systems.
     /// </summary>
-    private void Initialize()
+    public void Initialize()
     {
+        if (State != EngineState.Stopped)
+        {
+            throw new InvalidOperationException(
+                "The engine has already been initialized.");
+        }
+
         State = EngineState.Initializing;
 
         Log.Info("Initializing...");
@@ -176,28 +192,27 @@ public sealed class Engine
     /// <summary>
     /// Executes the engine's primary runtime loop.
     /// </summary>
-    private void MainLoop()
+    public void Tick()
     {
-        State = EngineState.Running;
-
-        Log.Info("Running...");
-
-        while (State == EngineState.Running)
+        if (State != EngineState.Running)
         {
-            _scheduler.BeginFrame();
-
-            _timerManager.Update(
-                _scheduler.DeltaTime);
-
-            InvokeMethods(MethodKind.Update);
-
-            while (_scheduler.ShouldRunFixedUpdate())
-            {
-                InvokeMethods(MethodKind.FixedUpdate);
-            }
-
-            _scheduler.EndFrame();
+            throw new InvalidOperationException(
+                "The engine must be running before Tick() can be called.");
         }
+
+        _scheduler.BeginFrame();
+
+        _timerManager.Update(
+            _scheduler.DeltaTime);
+
+        InvokeMethods(MethodKind.Update);
+
+        while (_scheduler.ShouldRunFixedUpdate())
+        {
+            InvokeMethods(MethodKind.FixedUpdate);
+        }
+
+        _scheduler.EndFrame();
     }
 
     /// <summary>
@@ -214,8 +229,13 @@ public sealed class Engine
     /// <summary>
     /// Shuts down the engine and performs cleanup.
     /// </summary>
-    private void Shutdown()
+    public void Shutdown()
     {
+        if (State == EngineState.Stopped)
+        {
+            return;
+        }
+
         State = EngineState.ShuttingDown;
 
         Log.Info("Shutting down...");

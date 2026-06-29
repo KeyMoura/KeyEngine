@@ -1,4 +1,4 @@
-﻿namespace KeyEngine.Math;
+﻿namespace KeyEngine.Numerics;
 
 /// <summary>
 /// Represents a two-dimensional vector.

@@ -1,5 +1,5 @@
 ﻿using KeyEngine.Configuration;
-using System.IO;
+using KeyEngine.IO;
 
 namespace KeyEngine.Plugins;
 
@@ -8,6 +8,7 @@ namespace KeyEngine.Plugins;
 /// </summary>
 public sealed class PluginContextFactory
 {
+
     /// <summary>
     /// Creates a plugin context.
     /// </summary>
@@ -33,9 +34,11 @@ public sealed class PluginContextFactory
                 manifest.Id);
 
         ConfigurationManager configuration =
-            new(Path.Combine(
-                pluginDirectory,
-                "config"));
+            new(
+                Path.Combine(
+                    pluginDirectory,
+                    "config"),
+                new PhysicalFileSystem());
 
         PluginContext context = new()
         {

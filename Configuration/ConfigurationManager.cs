@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using KeyEngine.IO;
+using System.Text.Json;
 
 namespace KeyEngine.Configuration;
 
@@ -9,6 +10,8 @@ public sealed class ConfigurationManager
     : IConfigurationManager
 {
     private readonly string _directory;
+
+    private readonly IFileSystem _fileSystem;
 
     private readonly Dictionary<Type, object> _loaded = new();
 
@@ -25,11 +28,14 @@ public sealed class ConfigurationManager
     /// The configuration directory.
     /// </param>
     public ConfigurationManager(
-        string directory)
+    string directory,
+    IFileSystem fileSystem)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(fileSystem);
 
         _directory = directory;
+        _fileSystem = fileSystem;
     }
 
     /// <inheritdoc/>
@@ -48,10 +54,10 @@ public sealed class ConfigurationManager
 
         T configuration;
 
-        if (File.Exists(path))
+        if (_fileSystem.FileExists(path))
         {
             string json =
-                File.ReadAllText(path);
+                _fileSystem.ReadAllText(path);
 
             configuration =
                 JsonSerializer.Deserialize<T>(
@@ -68,7 +74,7 @@ public sealed class ConfigurationManager
                     configuration,
                     JsonOptions);
 
-            File.WriteAllText(
+            _fileSystem.WriteAllText(
                 path,
                 json);
         }
@@ -96,7 +102,7 @@ public sealed class ConfigurationManager
                     type,
                     JsonOptions);
 
-            File.WriteAllText(
+            _fileSystem.WriteAllText(
                 path,
                 json);
         }
