@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace KeyEngine.Plugins;
@@ -25,6 +26,7 @@ public sealed class PluginManifestLoader
     /// </returns>
     public bool TryLoad(
         Assembly assembly,
+        [NotNullWhen(true)]
         out PluginManifest? manifest)
     {
         ArgumentNullException.ThrowIfNull(assembly);

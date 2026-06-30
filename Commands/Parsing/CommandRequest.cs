@@ -23,7 +23,7 @@ public sealed class CommandRequest
         init;
     } = [];
 
-    public string RawText { get; init; }
+    public required string RawText { get; init; }
 
     /// <summary>
     /// Gets the source that issued the command.
