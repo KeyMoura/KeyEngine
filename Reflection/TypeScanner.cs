@@ -106,6 +106,8 @@ public sealed class TypeScanner
             return;
         }
 
+        _lifecycleValidator.Validate(method);
+
         result.Add(
             CreateMethodMetadata(
                 declaringType,
