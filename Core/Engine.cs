@@ -302,9 +302,16 @@ public sealed class Engine
 
         Log.Info("Shutting down...");
 
-        InvokeMethods(MethodKind.Shutdown);
+        try
+        {
+            InvokeMethods(MethodKind.Shutdown);
 
-        _networkManager.CloseAll();
+            _networkManager.CloseAll();
+        }
+        finally
+        {
+            _resourceManager.Dispose();
+        }
 
         State = EngineState.Stopped;
     }

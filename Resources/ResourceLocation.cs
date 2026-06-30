@@ -26,15 +26,44 @@ public readonly struct ResourceLocation
     /// <param name="value">
     /// The provider-specific resource location.
     /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the scheme or value is blank, or the scheme is malformed.
+    /// </exception>
     public ResourceLocation(
         string scheme,
         string value)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(scheme);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-        Scheme = scheme.Trim().ToLowerInvariant();
+        Scheme = NormalizeScheme(scheme);
         Value = value;
+    }
+
+    internal static string NormalizeScheme(string scheme)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scheme);
+
+        string normalized = scheme.Trim().ToLowerInvariant();
+
+        if (!char.IsAsciiLetter(normalized[0]))
+        {
+            throw new ArgumentException(
+                "The resource scheme must start with a letter.",
+                nameof(scheme));
+        }
+
+        foreach (char character in normalized.AsSpan(1))
+        {
+            if (!char.IsAsciiLetterOrDigit(character) &&
+                character is not '+' and not '-' and not '.')
+            {
+                throw new ArgumentException(
+                    "The resource scheme contains an invalid character.",
+                    nameof(scheme));
+            }
+        }
+
+        return normalized;
     }
 
     /// <inheritdoc/>

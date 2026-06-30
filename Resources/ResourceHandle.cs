@@ -3,10 +3,14 @@ namespace KeyEngine.Resources;
 /// <summary>
 /// Represents a loaded resource and its location.
 /// </summary>
+/// <remarks>
+/// The resource is shared and remains owned by the resource manager that
+/// created the handle.
+/// </remarks>
 /// <typeparam name="T">
 /// The resource type.
 /// </typeparam>
-public readonly struct ResourceHandle<T>
+public sealed class ResourceHandle<T>
     where T : class
 {
     /// <summary>
