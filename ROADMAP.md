@@ -71,10 +71,26 @@ The following areas are planned directions and are not currently implemented:
 Future work should extend existing subsystem boundaries rather than introducing
 parallel managers or duplicate registration models.
 
+## Future game editor and runtime model
+
+KeyEngine may eventually serve as the foundation for a separate game-engine
+and editor product. This direction is not implemented and is not a pre-1.0
+commitment for the core runtime.
+
+The editor would be a KeyEngine application that loads editor,
+game-framework, runtime, and project plugins. An exported game would use the
+same KeyEngine application model while excluding editor-only plugins and
+shipping only the runtime, game-framework, and project plugins it needs. Game
+plugins should be straightforward for users to create, package, and distribute.
+
+UI, Audio, Windowing, Rendering, Physics, and game-specific systems would remain
+optional packages or plugins rather than required core dependencies.
+
 ## Non-goals for now
 
 - Making UI, Audio, Windowing, Rendering, or Physics mandatory core systems.
-- A full game engine, scene graph, or editor.
+- Building a full game engine, scene graph, or editor before the runtime and
+  plugin contracts are stable.
 - Built-in image, texture, font, audio, or media loaders.
 - YAML, XML, binary, or network serialization formats.
 - Distributed dependency injection or a general application container.

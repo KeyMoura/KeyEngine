@@ -94,6 +94,25 @@ Provider packages should implement stable contracts from their corresponding
 optional package or runtime plugin while containing all provider-specific
 dependencies and setup.
 
+## Future game editor and runtime model
+
+KeyEngine may eventually support a game-engine and editor product built on top
+of the framework rather than inside the core package. This model is future
+planning only and is not implemented today.
+
+- The editor would be a KeyEngine application that loads editor plugins,
+  game-framework plugins, runtime plugins, and project plugins.
+- An exported game would also be a KeyEngine application, using the same
+  lifecycle, services, and plugin model.
+- Exported games would exclude editor-only plugins and include only the
+  runtime, game-framework, and project plugins required by that build.
+- Game plugins should use stable, documented packaging conventions so users can
+  create and distribute them independently.
+
+UI, Audio, Windowing, Rendering, Physics, and other game-specific systems would
+remain optional packages or plugins shared by the editor and exported runtime.
+They would not become dependencies of the core package.
+
 ## Dependency principles
 
 - Core remains small and depends only on infrastructure required by all hosts.

@@ -131,6 +131,22 @@ plugins, not required core dependencies. Integrations should feed existing
 boundaries, such as input sources and resource loaders, without coupling the
 core runtime to a specific platform stack.
 
+## Future editor and exported runtime
+
+A future game editor may be built as a KeyEngine application rather than as a
+core runtime feature. It would compose editor plugins, game-framework plugins,
+runtime plugins, and project plugins through the same model used by other
+KeyEngine hosts.
+
+An exported game would also be a KeyEngine application. Its build would omit
+editor-only plugins and retain only the runtime, game-framework, and project
+plugins required by the game. This keeps editor execution and exported runtime
+execution on the same lifecycle, dependency-injection, and plugin foundations.
+
+This model is future planning only. User-created game plugins should eventually
+have clear packaging and distribution conventions, while UI, Audio, Windowing,
+Rendering, Physics, and game-specific systems remain outside the core package.
+
 ## Testing
 
 The initial xUnit contract suite exercises engine lifecycle transitions, event
