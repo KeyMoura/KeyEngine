@@ -159,8 +159,11 @@ public sealed class Engine
                 Log.Info(
                     $"Plugin '{plugin.Instance.GetType().Name}' registered system '{system.Name}'.");
 
-                _scanResult.AddRange(
-                    _typeScanner.Scan(system));
+                ScanResult result =
+                    _typeScanner.Scan(system);
+
+                builder.ScanResult.AddRange(result);
+                _scanResult.AddRange(result);
             }
 
 
@@ -239,7 +242,7 @@ public sealed class Engine
     {
         if (State == EngineState.Running)
         {
-            State = EngineState.Stopped;
+            State = EngineState.ShuttingDown;
         }
     }
 

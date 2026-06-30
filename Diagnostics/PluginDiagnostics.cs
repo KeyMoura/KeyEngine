@@ -6,6 +6,11 @@
 public sealed class PluginDiagnostics
 {
     /// <summary>
+    /// Gets the plugin identifier.
+    /// </summary>
+    public required string Id { get; init; }
+
+    /// <summary>
     /// Gets the plugin name.
     /// </summary>
     public required string Name { get; init; }
@@ -34,4 +39,9 @@ public sealed class PluginDiagnostics
     /// Gets the number of registered event listeners.
     /// </summary>
     public int EventListenerCount { get; init; }
+
+    /// <summary>
+    /// Gets the number of registered services.
+    /// </summary>
+    public int ServiceCount { get; init; }
 }

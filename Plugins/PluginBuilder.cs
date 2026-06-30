@@ -1,4 +1,5 @@
 ﻿using KeyEngine.Abstractions;
+using KeyEngine.Metadata;
 using KeyEngine.Services;
 
 namespace KeyEngine.Plugins;
@@ -11,6 +12,7 @@ internal sealed class PluginBuilder : IPluginBuilder
     private readonly List<Type> _systems = new();
     private readonly PluginInfo _info = new();
     private readonly ServiceCollection _services = new();
+    private readonly ScanResult _scanResult = new();
     private readonly PluginContext _context;
 
     /// <summary>
@@ -21,6 +23,8 @@ internal sealed class PluginBuilder : IPluginBuilder
     internal PluginInfo Info => _info;
 
     internal ServiceCollection Services => _services;
+
+    internal ScanResult ScanResult => _scanResult;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PluginBuilder"/> class.
