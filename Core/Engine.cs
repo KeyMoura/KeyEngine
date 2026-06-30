@@ -39,7 +39,7 @@ public sealed class Engine
     private readonly Scheduler.Scheduler _scheduler;
     private readonly EventBus _eventBus;
     private readonly CommandManager _commandManager;
-    private readonly PluginManager _pluginManager = new();
+    private readonly PluginManager _pluginManager;
     private readonly TimerManager _timerManager;
     private readonly ResourceManager _resourceManager;
     private readonly ISerializer _serializer;
@@ -115,6 +115,8 @@ public sealed class Engine
         _options = options;
 
         _eventBus = new EventBus(_systemRegistry);
+
+        _pluginManager = new PluginManager(_eventBus);
 
         _scheduler = new Scheduler.Scheduler(options.Scheduler);
 

@@ -7,6 +7,8 @@ internal sealed class PluginManager
 {
     private readonly PluginLoader _loader = new();
 
+    private readonly global::KeyEngine.Events.EventBus _events;
+
     private readonly List<LoadedPlugin> _plugins = new();
 
     private readonly Dictionary<LoadedPlugin, PluginBuilder> _builders = new();
@@ -15,6 +17,13 @@ internal sealed class PluginManager
     /// Gets the loaded plugins.
     /// </summary>
     public IReadOnlyList<LoadedPlugin> Plugins => _plugins;
+
+    internal PluginManager(global::KeyEngine.Events.EventBus events)
+    {
+        ArgumentNullException.ThrowIfNull(events);
+
+        _events = events;
+    }
 
     /// <summary>
     /// Loads plugins from a directory.
@@ -27,14 +36,28 @@ internal sealed class PluginManager
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
-        _plugins.Clear();
-        _builders.Clear();
-
         LoadedPlugin[] discoveredPlugins =
             _loader.LoadPlugins(directory).ToArray();
 
-        foreach (LoadedPlugin plugin in OrderPlugins(discoveredPlugins))
+        LoadPlugins(discoveredPlugins);
+    }
+
+    internal void LoadPlugins(IReadOnlyList<LoadedPlugin> plugins)
+    {
+        ArgumentNullException.ThrowIfNull(plugins);
+
+        _plugins.Clear();
+        _builders.Clear();
+
+        foreach (LoadedPlugin plugin in OrderPlugins(plugins))
         {
+            _events.Publish(new Events.PluginLoadedEvent
+            {
+                Id = plugin.Manifest.Id,
+                Name = plugin.Manifest.Name,
+                Version = plugin.Manifest.Version
+            });
+
             PluginBuilder builder = new(plugin.Context);
 
             plugin.Instance.Configure(
@@ -51,6 +74,13 @@ internal sealed class PluginManager
             }
 
             _plugins.Add(plugin);
+
+            _events.Publish(new Events.PluginRegisteredEvent
+            {
+                Id = plugin.Manifest.Id,
+                Name = plugin.Manifest.Name,
+                Version = plugin.Manifest.Version
+            });
         }
     }
 
