@@ -10,6 +10,7 @@ using KeyEngine.Plugins;
 using KeyEngine.Reflection;
 using KeyEngine.Resources;
 using KeyEngine.Scheduler;
+using KeyEngine.Serialization;
 using KeyEngine.Services;
 using KeyEngine.Systems;
 using KeyEngine.Timers;
@@ -39,6 +40,7 @@ public sealed class Engine
     private readonly PluginManager _pluginManager = new();
     private readonly TimerManager _timerManager;
     private readonly ResourceManager _resourceManager;
+    private readonly ISerializer _serializer;
     private readonly PluginManifestLoader _manifestLoader = new();
     private readonly PluginContextFactory _contextFactory = new();
 
@@ -61,6 +63,11 @@ public sealed class Engine
     /// Gets the engine resource manager.
     /// </summary>
     public ResourceManager Resources => _resourceManager;
+
+    /// <summary>
+    /// Gets the engine serializer.
+    /// </summary>
+    public ISerializer Serializer => _serializer;
 
     public EngineDiagnostics Diagnostics { get; }
 
@@ -105,6 +112,8 @@ public sealed class Engine
 
         _resourceManager = new ResourceManager();
 
+        _serializer = new JsonSerializerAdapter();
+
         Diagnostics = new EngineDiagnostics(this);
 
         _services.AddSingleton<Engine>(this);
@@ -114,6 +123,7 @@ public sealed class Engine
         _services.AddSingleton(_commandManager);
         _services.AddSingleton(_timerManager);
         _services.AddSingleton(_resourceManager);
+        _services.AddSingleton(_serializer);
         _services.AddSingleton<IFileSystem, PhysicalFileSystem>();
     }
 

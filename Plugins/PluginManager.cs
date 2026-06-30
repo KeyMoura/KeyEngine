@@ -28,6 +28,7 @@ public sealed class PluginManager
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
         _plugins.Clear();
+        _builders.Clear();
 
         foreach (LoadedPlugin plugin in _loader.LoadPlugins(directory))
         {

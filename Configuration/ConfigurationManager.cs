@@ -1,5 +1,5 @@
 ﻿using KeyEngine.IO;
-using System.Text.Json;
+using KeyEngine.Serialization;
 
 namespace KeyEngine.Configuration;
 
@@ -13,13 +13,9 @@ public sealed class ConfigurationManager
 
     private readonly IFileSystem _fileSystem;
 
-    private readonly Dictionary<Type, object> _loaded = new();
+    private readonly ISerializer _serializer;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true
-    };
+    private readonly Dictionary<Type, object> _loaded = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConfigurationManager"/> class.
@@ -27,15 +23,43 @@ public sealed class ConfigurationManager
     /// <param name="directory">
     /// The configuration directory.
     /// </param>
+    /// <param name="fileSystem">
+    /// The filesystem used to read and write configuration files.
+    /// </param>
     public ConfigurationManager(
     string directory,
     IFileSystem fileSystem)
+        : this(
+            directory,
+            fileSystem,
+            new JsonSerializerAdapter())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConfigurationManager"/> class.
+    /// </summary>
+    /// <param name="directory">
+    /// The configuration directory.
+    /// </param>
+    /// <param name="fileSystem">
+    /// The filesystem used to read and write configuration files.
+    /// </param>
+    /// <param name="serializer">
+    /// The serializer used for configuration values.
+    /// </param>
+    public ConfigurationManager(
+        string directory,
+        IFileSystem fileSystem,
+        ISerializer serializer)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(fileSystem);
+        ArgumentNullException.ThrowIfNull(serializer);
 
         _directory = directory;
         _fileSystem = fileSystem;
+        _serializer = serializer;
     }
 
     /// <inheritdoc/>
@@ -60,9 +84,7 @@ public sealed class ConfigurationManager
                 _fileSystem.ReadAllText(path);
 
             configuration =
-                JsonSerializer.Deserialize<T>(
-                    json,
-                    JsonOptions)
+                _serializer.Deserialize<T>(json)
                 ?? new T();
         }
         else
@@ -70,9 +92,7 @@ public sealed class ConfigurationManager
             configuration = new T();
 
             string json =
-                JsonSerializer.Serialize(
-                    configuration,
-                    JsonOptions);
+                _serializer.Serialize(configuration);
 
             _fileSystem.WriteAllText(
                 path,
@@ -97,10 +117,7 @@ public sealed class ConfigurationManager
                     $"{type.Name}.json");
 
             string json =
-                JsonSerializer.Serialize(
-                    configuration,
-                    type,
-                    JsonOptions);
+                _serializer.Serialize(configuration);
 
             _fileSystem.WriteAllText(
                 path,
