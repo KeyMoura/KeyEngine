@@ -35,7 +35,7 @@ public sealed class CommandManager
     /// <summary>
     /// Registers a command.
     /// </summary>
-    public void Register(CommandMetadata command)
+    internal void Register(CommandMetadata command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
