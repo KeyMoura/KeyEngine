@@ -10,6 +10,7 @@ public sealed class PointerState
     private readonly HashSet<MouseButton> _down = [];
     private readonly HashSet<MouseButton> _pressed = [];
     private readonly HashSet<MouseButton> _released = [];
+    private bool _hasPosition;
 
     /// <summary>
     /// Gets the current pointer position in source-defined coordinates.
@@ -103,15 +104,22 @@ public sealed class PointerState
         _down.Clear();
         _down.UnionWith(buttons);
 
-        Delta = hasPosition
+        Delta = hasPosition && _hasPosition
             ? position - Position
             : Vector2.Zero;
 
         if (hasPosition)
         {
             Position = position;
+            _hasPosition = true;
         }
 
         ScrollDelta = scrollDelta;
+    }
+
+    internal void ResetPositionBaseline()
+    {
+        _hasPosition = false;
+        Delta = Vector2.Zero;
     }
 }

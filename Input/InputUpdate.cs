@@ -7,10 +7,17 @@ namespace KeyEngine.Input;
 /// <summary>
 /// Provides input sources with controlled access to the current input state.
 /// </summary>
+/// <remarks>
+/// An input update is valid only for the duration of the
+/// <see cref="IInputSource.Update"/> callback that receives it. Input is
+/// snapshot-based; transitions that begin and end within one callback are not
+/// preserved in the aggregate frame state.
+/// </remarks>
 public sealed class InputUpdate
 {
     private readonly HashSet<Key> _keys = [];
     private readonly HashSet<MouseButton> _pointerButtons = [];
+    private bool _isActive;
 
     internal IReadOnlySet<Key> Keys => _keys;
 
@@ -40,6 +47,8 @@ public sealed class InputUpdate
         Key key,
         bool isDown)
     {
+        EnsureActive();
+
         if (isDown)
         {
             _keys.Add(key);
@@ -64,6 +73,8 @@ public sealed class InputUpdate
         MouseButton button,
         bool isDown)
     {
+        EnsureActive();
+
         if (isDown)
         {
             _pointerButtons.Add(button);
@@ -82,6 +93,8 @@ public sealed class InputUpdate
     /// </param>
     public void SetPointerPosition(Vector2 position)
     {
+        EnsureActive();
+
         PointerPosition = position;
         HasPointerPosition = true;
     }
@@ -92,14 +105,31 @@ public sealed class InputUpdate
     /// <param name="delta">
     /// The scroll delta.
     /// </param>
-    public void AddPointerScroll(Vector2 delta)
+    public void AddPointerScrollDelta(Vector2 delta)
     {
+        EnsureActive();
+
         PointerScroll += delta;
     }
 
-    internal void BeginFrame()
+    internal void BeginUpdate()
     {
         HasPointerPosition = false;
         PointerScroll = Vector2.Zero;
+        _isActive = true;
+    }
+
+    internal void EndUpdate()
+    {
+        _isActive = false;
+    }
+
+    private void EnsureActive()
+    {
+        if (!_isActive)
+        {
+            throw new InvalidOperationException(
+                "The input update is only valid during its input source callback.");
+        }
     }
 }
