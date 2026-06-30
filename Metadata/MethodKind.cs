@@ -3,7 +3,7 @@
 /// <summary>
 /// Identifies the purpose of a discovered engine method.
 /// </summary>
-public enum MethodKind
+internal enum MethodKind
 {
     /// <summary>
     /// Executes once during engine initialization.

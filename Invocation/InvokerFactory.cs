@@ -5,7 +5,7 @@ namespace KeyEngine.Invocation;
 /// <summary>
 /// Creates invokers for reflected methods.
 /// </summary>
-public sealed class InvokerFactory
+internal sealed class InvokerFactory
 {
     /// <summary>
     /// Creates an invoker for the specified method.

@@ -3,6 +3,6 @@
 /// <summary>
 /// Represents metadata about the engine.
 /// </summary>
-public sealed class EngineInfo : ApplicationInfo
+internal sealed class EngineInfo : ApplicationInfo
 {
 }

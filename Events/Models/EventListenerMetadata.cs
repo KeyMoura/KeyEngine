@@ -5,7 +5,7 @@ namespace KeyEngine.Events.Models;
 /// <summary>
 /// Represents a discovered event listener.
 /// </summary>
-public sealed class EventListenerMetadata
+internal sealed class EventListenerMetadata
 {
     /// <summary>
     /// Gets the underlying method metadata.

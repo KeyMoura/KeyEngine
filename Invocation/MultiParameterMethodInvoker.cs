@@ -5,7 +5,7 @@ namespace KeyEngine.Invocation;
 /// <summary>
 /// Invokes an instance method with multiple parameters.
 /// </summary>
-public sealed class MultiParameterMethodInvoker : IMethodInvoker
+internal sealed class MultiParameterMethodInvoker : IMethodInvoker
 {
     private readonly MethodInfo _method;
     private readonly int _parameterCount;

@@ -11,7 +11,7 @@ using KeyEngine.Services;
 /// Each system type is instantiated at most once for the lifetime of the
 /// engine. Subsequent requests return the existing instance.
 /// </remarks>
-public sealed class SystemRegistry
+internal sealed class SystemRegistry
 {
     private IServiceResolver? _services;
 

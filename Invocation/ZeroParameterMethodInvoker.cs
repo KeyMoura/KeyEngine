@@ -5,7 +5,7 @@ namespace KeyEngine.Invocation;
 /// <summary>
 /// Invokes an instance method that declares no parameters.
 /// </summary>
-public sealed class ZeroParameterMethodInvoker : IMethodInvoker
+internal sealed class ZeroParameterMethodInvoker : IMethodInvoker
 {
 
     private readonly MethodInfo _method;

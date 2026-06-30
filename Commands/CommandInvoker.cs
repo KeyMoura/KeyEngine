@@ -6,7 +6,7 @@ namespace KeyEngine.Commands;
 /// <summary>
 /// Invokes engine commands.
 /// </summary>
-public sealed class CommandInvoker
+internal sealed class CommandInvoker
 {
     private readonly SystemRegistry _systems;
 

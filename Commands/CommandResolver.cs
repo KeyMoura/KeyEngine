@@ -1,6 +1,6 @@
 ﻿namespace KeyEngine.Commands
 {
-    public sealed class CommandResolver
+    internal sealed class CommandResolver
     {
         public CommandMetadata Resolve(
             IReadOnlyList<CommandMetadata> overloads,

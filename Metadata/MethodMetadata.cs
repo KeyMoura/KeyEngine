@@ -6,7 +6,7 @@ namespace KeyEngine.Metadata;
 /// <summary>
 /// Represents a discovered engine method.
 /// </summary>
-public sealed class MethodMetadata
+internal sealed class MethodMetadata
 {
     /// <summary>
     /// Gets the method kind.

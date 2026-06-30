@@ -6,7 +6,7 @@ namespace KeyEngine.Core;
 /// <summary>
 /// Represents the configuration used to create an <see cref="Engine"/>.
 /// </summary>
-public sealed class EngineOptions
+internal sealed class EngineOptions
 {
     /// <summary>
     /// Gets the assemblies that should be scanned by the engine.

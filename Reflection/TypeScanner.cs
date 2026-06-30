@@ -12,7 +12,7 @@ namespace KeyEngine.Reflection;
 /// <summary>
 /// Scans assemblies for KeyEngine metadata.
 /// </summary>
-public sealed class TypeScanner
+internal sealed class TypeScanner
 {
     private readonly InvokerFactory _invokerFactory = new();
 

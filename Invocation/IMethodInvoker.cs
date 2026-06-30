@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents an object capable of invoking a reflected method.
 /// </summary>
-public interface IMethodInvoker
+internal interface IMethodInvoker
 {
     /// <summary>
     /// Invokes the method.

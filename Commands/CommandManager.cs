@@ -20,7 +20,7 @@ public sealed class CommandManager
     private readonly CommandInvoker _invoker;
     private readonly EventBus _events;
 
-    public CommandManager(
+    internal CommandManager(
         SystemRegistry systems,
         EventBus events)
     {

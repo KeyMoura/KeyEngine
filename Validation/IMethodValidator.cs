@@ -5,7 +5,7 @@ namespace KeyEngine.Validation;
 /// <summary>
 /// Validates reflected engine methods.
 /// </summary>
-public interface IMethodValidator
+internal interface IMethodValidator
 {
     /// <summary>
     /// Validates a reflected method.

@@ -9,7 +9,11 @@ namespace KeyEngine.Commands
         public IReadOnlyList<string> Aliases { get; init; }
             = [];
 
-        public required MethodMetadata Method { get; init; }
+        internal required MethodMetadata Method { get; init; }
+
+        internal CommandMetadata()
+        {
+        }
 
         /// <summary>
         /// Gets the command description.

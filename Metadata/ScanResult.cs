@@ -6,7 +6,7 @@ namespace KeyEngine.Metadata;
 /// <summary>
 /// Represents the metadata discovered while scanning an assembly.
 /// </summary>
-public sealed class ScanResult
+internal sealed class ScanResult
 {
     private readonly List<MethodMetadata> _methods = new();
     private readonly List<EventListenerMetadata> _eventListeners = new();

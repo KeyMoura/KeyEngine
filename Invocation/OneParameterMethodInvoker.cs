@@ -5,7 +5,7 @@ namespace KeyEngine.Invocation;
 /// <summary>
 /// Invokes an instance method that declares a single parameter.
 /// </summary>
-public sealed class OneParameterMethodInvoker : IMethodInvoker
+internal sealed class OneParameterMethodInvoker : IMethodInvoker
 {
     private readonly MethodInfo _method;
 

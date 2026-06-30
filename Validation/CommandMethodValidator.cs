@@ -5,7 +5,7 @@ namespace KeyEngine.Validation;
 /// <summary>
 /// Validates command methods.
 /// </summary>
-public sealed class CommandMethodValidator
+internal sealed class CommandMethodValidator
 {
     /// <summary>
     /// Validates a command method.

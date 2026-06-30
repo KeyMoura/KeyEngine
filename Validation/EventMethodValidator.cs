@@ -6,7 +6,7 @@ namespace KeyEngine.Validation;
 /// <summary>
 /// Validates event listener methods.
 /// </summary>
-public sealed class EventMethodValidator : IMethodValidator
+internal sealed class EventMethodValidator : IMethodValidator
 {
     /// <inheritdoc/>
     public void Validate(MethodInfo method)

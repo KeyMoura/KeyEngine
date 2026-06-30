@@ -10,7 +10,7 @@ public sealed class EventBus
 {
     private readonly SystemRegistry _systemRegistry;
 
-    public EventBus(SystemRegistry systemRegistry)
+    internal EventBus(SystemRegistry systemRegistry)
     {
         ArgumentNullException.ThrowIfNull(systemRegistry);
 
@@ -25,7 +25,7 @@ public sealed class EventBus
     /// <param name="listener">
     /// The listener metadata.
     /// </param>
-    public void Register(EventListenerMetadata listener)
+    internal void Register(EventListenerMetadata listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
 
@@ -60,7 +60,7 @@ public sealed class EventBus
     /// <returns>
     /// A read-only collection of listeners.
     /// </returns>
-    public IReadOnlyList<EventListenerMetadata> GetListeners(Type eventType)
+    internal IReadOnlyList<EventListenerMetadata> GetListeners(Type eventType)
     {
         if (_listeners.TryGetValue(eventType, out List<EventListenerMetadata>? listeners))
         {

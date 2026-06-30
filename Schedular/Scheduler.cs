@@ -9,7 +9,7 @@ namespace KeyEngine.Scheduler;
 /// The scheduler is responsible for tracking elapsed time,
 /// frame timing, and fixed update timing.
 /// </remarks>
-public sealed class Scheduler
+internal sealed class Scheduler
 {
     private readonly Stopwatch _stopwatch = new();
 

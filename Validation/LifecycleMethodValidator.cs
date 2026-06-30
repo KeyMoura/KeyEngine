@@ -7,7 +7,7 @@ namespace KeyEngine.Validation;
 /// <summary>
 /// Validates lifecycle methods.
 /// </summary>
-public sealed class LifecycleMethodValidator : IMethodValidator
+internal sealed class LifecycleMethodValidator : IMethodValidator
 {
     /// <inheritdoc/>
     public void Validate(MethodInfo method)

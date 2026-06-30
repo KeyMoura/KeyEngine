@@ -1,7 +1,7 @@
 ﻿using KeyEngine.Plugins;
 using System.Reflection;
 
-public sealed class PluginLoadResult
+internal sealed class PluginLoadResult
 {
     public required Assembly Assembly { get; init; }
 
