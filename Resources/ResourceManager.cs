@@ -97,10 +97,10 @@ public sealed class ResourceManager
         ThrowIfDisposed();
 
         if (string.IsNullOrWhiteSpace(location.Scheme) ||
-            string.IsNullOrWhiteSpace(location.Value))
+            string.IsNullOrWhiteSpace(location.Identifier))
         {
             throw new ArgumentException(
-                "The resource location must specify a scheme and value.",
+                "The resource location must specify a scheme and identifier.",
                 nameof(location));
         }
 

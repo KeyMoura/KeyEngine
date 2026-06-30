@@ -12,9 +12,9 @@ public readonly struct ResourceLocation
     public string Scheme { get; }
 
     /// <summary>
-    /// Gets the provider-specific resource location.
+    /// Gets the provider-specific resource identifier.
     /// </summary>
-    public string Value { get; }
+    public string Identifier { get; }
 
     /// <summary>
     /// Initializes a new resource location.
@@ -23,20 +23,20 @@ public readonly struct ResourceLocation
     /// The scheme that identifies the resource provider, such as <c>file</c>,
     /// <c>embedded</c>, or <c>memory</c>.
     /// </param>
-    /// <param name="value">
-    /// The provider-specific resource location.
+    /// <param name="identifier">
+    /// The provider-specific resource identifier.
     /// </param>
     /// <exception cref="ArgumentException">
-    /// Thrown when the scheme or value is blank, or the scheme is malformed.
+    /// Thrown when the scheme or identifier is blank, or the scheme is malformed.
     /// </exception>
     public ResourceLocation(
         string scheme,
-        string value)
+        string identifier)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
 
         Scheme = NormalizeScheme(scheme);
-        Value = value;
+        Identifier = identifier;
     }
 
     internal static string NormalizeScheme(string scheme)
@@ -73,8 +73,8 @@ public readonly struct ResourceLocation
                    Scheme,
                    other.Scheme) &&
                StringComparer.Ordinal.Equals(
-                   Value,
-                   other.Value);
+                   Identifier,
+                   other.Identifier);
     }
 
     /// <inheritdoc/>
@@ -91,9 +91,9 @@ public readonly struct ResourceLocation
             Scheme is null
                 ? 0
                 : StringComparer.OrdinalIgnoreCase.GetHashCode(Scheme),
-            Value is null
+            Identifier is null
                 ? 0
-                : StringComparer.Ordinal.GetHashCode(Value));
+                : StringComparer.Ordinal.GetHashCode(Identifier));
     }
 
     /// <summary>
@@ -119,6 +119,6 @@ public readonly struct ResourceLocation
     /// <inheritdoc/>
     public override string ToString()
     {
-        return $"{Scheme}://{Value}";
+        return $"{Scheme}://{Identifier}";
     }
 }
