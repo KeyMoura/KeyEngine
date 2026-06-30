@@ -88,21 +88,35 @@ public sealed class EngineDiagnostics
                 PluginBuilder builder =
                     _engine.PluginManager.GetBuilder(plugin);
 
-                plugins.Add(new PluginDiagnostics
-                {
-                    Id = plugin.Manifest.Id,
-                    Name = plugin.Manifest.Name,
-                    Version = plugin.Manifest.Version,
-                    State = PluginState.Running,
-                    SystemCount = builder.ScanResult.Systems.Count,
-                    CommandCount = builder.ScanResult.Commands.Count,
-                    EventListenerCount = builder.ScanResult.EventListeners.Count,
-                    ServiceCount = builder.Services.Services.Count,
-                    DependencyCount = plugin.Manifest.Dependencies.Count
-                });
+                plugins.Add(CreatePluginDiagnostics(
+                    plugin,
+                    builder));
             }
 
             return plugins;
         }
+    }
+
+    internal static PluginDiagnostics CreatePluginDiagnostics(
+        LoadedPlugin plugin,
+        PluginBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(plugin);
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return new PluginDiagnostics
+        {
+            Id = plugin.Manifest.Id,
+            Name = plugin.Manifest.Name,
+            Version = plugin.Manifest.Version,
+            State = PluginState.Registered,
+            DependencyCount = plugin.Manifest.Dependencies.Count,
+            LoadBeforeCount = plugin.Manifest.LoadBefore.Count,
+            LoadAfterCount = plugin.Manifest.LoadAfter.Count,
+            SystemCount = builder.ScanResult.Systems.Count,
+            CommandCount = builder.ScanResult.Commands.Count,
+            EventListenerCount = builder.ScanResult.EventListeners.Count,
+            ServiceCount = builder.Services.Services.Count
+        };
     }
 }

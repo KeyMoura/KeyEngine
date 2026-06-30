@@ -49,4 +49,14 @@ public sealed class PluginDiagnostics
     /// Gets the number of declared plugin dependencies.
     /// </summary>
     public int DependencyCount { get; init; }
+
+    /// <summary>
+    /// Gets the number of declared load-before hints.
+    /// </summary>
+    public int LoadBeforeCount { get; init; }
+
+    /// <summary>
+    /// Gets the number of declared load-after hints.
+    /// </summary>
+    public int LoadAfterCount { get; init; }
 }
