@@ -69,4 +69,35 @@ public sealed class EngineDiagnostics
     /// </summary>
     public int ActiveTimerCount =>
         _engine.TimerManager.Timers.Count;
+
+    /// <summary>
+    /// Gets diagnostic information for all loaded plugins.
+    /// </summary>
+    public IReadOnlyList<PluginDiagnostics> Plugins
+    {
+        get
+        {
+            List<PluginDiagnostics> plugins = new();
+
+            foreach (LoadedPlugin plugin in _engine.PluginManager.Plugins)
+            {
+                PluginBuilder builder =
+                    _engine.PluginManager.GetBuilder(plugin);
+
+                plugins.Add(new PluginDiagnostics
+                {
+                    Id = plugin.Manifest.Id,
+                    Name = plugin.Manifest.Name,
+                    Version = plugin.Manifest.Version,
+                    State = PluginState.Running,
+                    SystemCount = builder.ScanResult.Systems.Count,
+                    CommandCount = builder.ScanResult.Commands.Count,
+                    EventListenerCount = builder.ScanResult.EventListeners.Count,
+                    ServiceCount = builder.Services.Services.Count
+                });
+            }
+
+            return plugins;
+        }
+    }
 }
