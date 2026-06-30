@@ -44,4 +44,9 @@ public sealed class PluginDiagnostics
     /// Gets the number of registered services.
     /// </summary>
     public int ServiceCount { get; init; }
+
+    /// <summary>
+    /// Gets the number of declared plugin dependencies.
+    /// </summary>
+    public int DependencyCount { get; init; }
 }

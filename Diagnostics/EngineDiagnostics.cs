@@ -97,7 +97,8 @@ public sealed class EngineDiagnostics
                     SystemCount = builder.ScanResult.Systems.Count,
                     CommandCount = builder.ScanResult.Commands.Count,
                     EventListenerCount = builder.ScanResult.EventListeners.Count,
-                    ServiceCount = builder.Services.Services.Count
+                    ServiceCount = builder.Services.Services.Count,
+                    DependencyCount = plugin.Manifest.Dependencies.Count
                 });
             }
 

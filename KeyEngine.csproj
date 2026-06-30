@@ -10,4 +10,8 @@
     <Compile Remove="tests/**/*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="KeyEngine.Tests" />
+  </ItemGroup>
+
 </Project>

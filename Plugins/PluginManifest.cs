@@ -23,7 +23,7 @@ public sealed class PluginManifest : ApplicationInfo
     public required string Main { get; init; }
 
     /// <summary>
-    /// Gets the plugin dependencies.
+    /// Gets the IDs of plugins that must load before this plugin.
     /// </summary>
     public IList<string> Dependencies { get; init; }
         = [];
