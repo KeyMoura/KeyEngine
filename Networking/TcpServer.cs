@@ -6,6 +6,11 @@ namespace KeyEngine.Networking;
 /// <summary>
 /// Listens for inbound TCP connections.
 /// </summary>
+/// <remarks>
+/// Instances are not guaranteed to be thread-safe. Connections returned by
+/// <see cref="Accept"/> are owned by the server and are closed when the server
+/// stops or is disposed.
+/// </remarks>
 public sealed class TcpServer
     : IDisposable
 {
@@ -22,11 +27,6 @@ public sealed class TcpServer
     /// Gets the endpoint on which the server is listening.
     /// </summary>
     public EndPoint? LocalEndPoint => _listener?.LocalEndPoint;
-
-    /// <summary>
-    /// Gets the connections accepted by the server.
-    /// </summary>
-    public IReadOnlyList<TcpConnection> Connections => _connections;
 
     internal TcpServer()
     {
@@ -82,8 +82,13 @@ public sealed class TcpServer
     /// Waits for and accepts the next inbound connection.
     /// </summary>
     /// <returns>
-    /// The accepted connection.
+    /// The accepted connection. The connection remains owned by the server and
+    /// is closed when the server stops or is disposed.
     /// </returns>
+    /// <remarks>
+    /// This method blocks until a connection is accepted or the operation
+    /// fails.
+    /// </remarks>
     public TcpConnection Accept()
     {
         if (State != ConnectionState.Listening ||

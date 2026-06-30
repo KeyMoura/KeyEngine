@@ -3,21 +3,14 @@ namespace KeyEngine.Networking;
 /// <summary>
 /// Creates and owns TCP clients and servers.
 /// </summary>
+/// <remarks>
+/// Instances are not guaranteed to be thread-safe.
+/// </remarks>
 public sealed class NetworkManager
     : IDisposable
 {
     private readonly List<TcpClient> _clients = [];
     private readonly List<TcpServer> _servers = [];
-
-    /// <summary>
-    /// Gets the clients created by the manager.
-    /// </summary>
-    public IReadOnlyList<TcpClient> Clients => _clients;
-
-    /// <summary>
-    /// Gets the servers created by the manager.
-    /// </summary>
-    public IReadOnlyList<TcpServer> Servers => _servers;
 
     /// <summary>
     /// Creates a TCP client owned by the manager.

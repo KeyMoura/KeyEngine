@@ -6,6 +6,9 @@ namespace KeyEngine.Networking;
 /// <summary>
 /// Creates an outbound TCP connection.
 /// </summary>
+/// <remarks>
+/// Instances are not guaranteed to be thread-safe.
+/// </remarks>
 public sealed class TcpClient
     : IDisposable
 {
@@ -38,13 +41,17 @@ public sealed class TcpClient
     /// <returns>
     /// The established connection.
     /// </returns>
+    /// <remarks>
+    /// This method blocks until the connection succeeds or fails.
+    /// </remarks>
     public TcpConnection Connect(
         string host,
         int port)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
 
-        if (port is < IPEndPoint.MinPort or > IPEndPoint.MaxPort)
+        if (port <= IPEndPoint.MinPort ||
+            port > IPEndPoint.MaxPort)
         {
             throw new ArgumentOutOfRangeException(nameof(port));
         }

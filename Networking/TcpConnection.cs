@@ -6,6 +6,9 @@ namespace KeyEngine.Networking;
 /// <summary>
 /// Represents an established TCP connection.
 /// </summary>
+/// <remarks>
+/// Instances are not guaranteed to be thread-safe.
+/// </remarks>
 public sealed class TcpConnection
     : IDisposable
 {
@@ -52,11 +55,25 @@ public sealed class TcpConnection
     /// <returns>
     /// The number of bytes sent.
     /// </returns>
+    /// <remarks>
+    /// This method blocks until bytes are sent or the operation fails.
+    /// </remarks>
     public int Send(ReadOnlySpan<byte> data)
     {
         EnsureConnected();
 
-        return _socket.Send(data);
+        try
+        {
+            return _socket.Send(data);
+        }
+        catch (Exception exception) when (
+            exception is SocketException or
+            IOException or
+            ObjectDisposedException)
+        {
+            Close();
+            throw;
+        }
     }
 
     /// <summary>
@@ -69,11 +86,28 @@ public sealed class TcpConnection
     /// The number of bytes received, or zero when the remote endpoint closes
     /// the connection.
     /// </returns>
+    /// <remarks>
+    /// This method blocks until bytes are received, the remote endpoint closes
+    /// the connection, or the operation fails.
+    /// </remarks>
     public int Receive(Span<byte> buffer)
     {
         EnsureConnected();
 
-        int received = _socket.Receive(buffer);
+        int received;
+
+        try
+        {
+            received = _socket.Receive(buffer);
+        }
+        catch (Exception exception) when (
+            exception is SocketException or
+            IOException or
+            ObjectDisposedException)
+        {
+            Close();
+            throw;
+        }
 
         if (received == 0)
         {
@@ -93,8 +127,8 @@ public sealed class TcpConnection
             return;
         }
 
-        _socket.Dispose();
         State = ConnectionState.Disconnected;
+        _socket.Dispose();
     }
 
     /// <inheritdoc/>
