@@ -6,6 +6,7 @@ using KeyEngine.Events.Models;
 using KeyEngine.IO;
 using KeyEngine.Logging;
 using KeyEngine.Metadata;
+using KeyEngine.Networking;
 using KeyEngine.Plugins;
 using KeyEngine.Reflection;
 using KeyEngine.Resources;
@@ -41,6 +42,7 @@ public sealed class Engine
     private readonly TimerManager _timerManager;
     private readonly ResourceManager _resourceManager;
     private readonly ISerializer _serializer;
+    private readonly NetworkManager _networkManager;
     private readonly PluginManifestLoader _manifestLoader = new();
     private readonly PluginContextFactory _contextFactory = new();
 
@@ -68,6 +70,11 @@ public sealed class Engine
     /// Gets the engine serializer.
     /// </summary>
     public ISerializer Serializer => _serializer;
+
+    /// <summary>
+    /// Gets the engine network manager.
+    /// </summary>
+    public NetworkManager Networking => _networkManager;
 
     public EngineDiagnostics Diagnostics { get; }
 
@@ -114,6 +121,8 @@ public sealed class Engine
 
         _serializer = new JsonSerializerAdapter();
 
+        _networkManager = new NetworkManager();
+
         Diagnostics = new EngineDiagnostics(this);
 
         _services.AddSingleton<Engine>(this);
@@ -124,6 +133,7 @@ public sealed class Engine
         _services.AddSingleton(_timerManager);
         _services.AddSingleton(_resourceManager);
         _services.AddSingleton(_serializer);
+        _services.AddSingleton(_networkManager);
         _services.AddSingleton<IFileSystem, PhysicalFileSystem>();
     }
 
@@ -281,6 +291,8 @@ public sealed class Engine
         Log.Info("Shutting down...");
 
         InvokeMethods(MethodKind.Shutdown);
+
+        _networkManager.CloseAll();
 
         State = EngineState.Stopped;
     }
