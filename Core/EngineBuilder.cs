@@ -13,7 +13,6 @@ public sealed class EngineBuilder
     private readonly List<Assembly> _assemblies = new();
     private readonly SchedulerOptions _schedulerOptions = new();
     private readonly ApplicationInfo _engineInfo = new();
-    private readonly List<Type> _plugins = new();
 
     private string _pluginDirectory = "plugins";
 
@@ -38,23 +37,6 @@ public sealed class EngineBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         _pluginDirectory = path;
-
-        return this;
-    }
-
-    /// <summary>
-    /// Registers a plugin with the engine.
-    /// </summary>
-    /// <typeparam name="TPlugin">
-    /// The plugin type.
-    /// </typeparam>
-    /// <returns>
-    /// The current <see cref="EngineBuilder"/> instance.
-    /// </returns>
-    public EngineBuilder AddPlugin<TPlugin>()
-        where TPlugin : class, IPlugin
-    {
-        _plugins.Add(typeof(TPlugin));
 
         return this;
     }
