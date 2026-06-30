@@ -4,6 +4,7 @@ using KeyEngine.Diagnostics;
 using KeyEngine.Events;
 using KeyEngine.Events.Models;
 using KeyEngine.IO;
+using KeyEngine.Input;
 using KeyEngine.Logging;
 using KeyEngine.Metadata;
 using KeyEngine.Networking;
@@ -43,6 +44,7 @@ public sealed class Engine
     private readonly ResourceManager _resourceManager;
     private readonly ISerializer _serializer;
     private readonly NetworkManager _networkManager;
+    private readonly InputManager _inputManager;
     private readonly PluginManifestLoader _manifestLoader = new();
     private readonly PluginContextFactory _contextFactory = new();
 
@@ -75,6 +77,11 @@ public sealed class Engine
     /// Gets the engine network manager.
     /// </summary>
     public NetworkManager Networking => _networkManager;
+
+    /// <summary>
+    /// Gets the engine input manager.
+    /// </summary>
+    public InputManager Input => _inputManager;
 
     public EngineDiagnostics Diagnostics { get; }
 
@@ -123,6 +130,8 @@ public sealed class Engine
 
         _networkManager = new NetworkManager();
 
+        _inputManager = new InputManager();
+
         Diagnostics = new EngineDiagnostics(this);
 
         _services.AddSingleton<Engine>(this);
@@ -134,6 +143,7 @@ public sealed class Engine
         _services.AddSingleton(_resourceManager);
         _services.AddSingleton(_serializer);
         _services.AddSingleton(_networkManager);
+        _services.AddSingleton(_inputManager);
         _services.AddSingleton<IFileSystem, PhysicalFileSystem>();
     }
 
@@ -251,6 +261,8 @@ public sealed class Engine
         }
 
         _scheduler.BeginFrame();
+
+        _inputManager.Update();
 
         _timerManager.Update(
             _scheduler.DeltaTime);
