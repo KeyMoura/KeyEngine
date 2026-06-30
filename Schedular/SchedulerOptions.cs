@@ -5,19 +5,53 @@
 /// </summary>
 public sealed class SchedulerOptions
 {
+    private int _ticksPerSecond = 60;
+
     /// <summary>
     /// Gets or sets the number of fixed updates executed per second.
     /// </summary>
     /// <remarks>
     /// The default value is 60 ticks per second.
     /// </remarks>
-    public int TicksPerSecond { get; set; } = 60;
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the value is less than or equal to zero.
+    /// </exception>
+    public int TicksPerSecond
+    {
+        get => _ticksPerSecond;
+        set
+        {
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    "Ticks per second must be greater than zero.");
+            }
+
+            _ticksPerSecond = value;
+        }
+    }
 
     /// <summary>
     /// Gets or sets the maximum frame rate.
     /// </summary>
     /// <remarks>
-    /// A value of 0 disables frame limiting.
+    /// Frame limiting is not currently supported. The only supported value is
+    /// 0, which disables frame limiting.
     /// </remarks>
-    public int TargetFrameRate { get; set; } = 0;
+    /// <exception cref="NotSupportedException">
+    /// Thrown when the value is not zero.
+    /// </exception>
+    public int TargetFrameRate
+    {
+        get => 0;
+        set
+        {
+            if (value != 0)
+            {
+                throw new NotSupportedException(
+                    "Frame limiting is not currently supported.");
+            }
+        }
+    }
 }
