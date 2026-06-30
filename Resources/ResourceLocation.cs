@@ -20,7 +20,8 @@ public readonly struct ResourceLocation
     /// Initializes a new resource location.
     /// </summary>
     /// <param name="scheme">
-    /// The scheme that identifies the resource provider.
+    /// The scheme that identifies the resource provider, such as <c>file</c>,
+    /// <c>embedded</c>, or <c>memory</c>.
     /// </param>
     /// <param name="value">
     /// The provider-specific resource location.
@@ -32,7 +33,7 @@ public readonly struct ResourceLocation
         ArgumentException.ThrowIfNullOrWhiteSpace(scheme);
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-        Scheme = scheme;
+        Scheme = scheme.Trim().ToLowerInvariant();
         Value = value;
     }
 
@@ -89,6 +90,6 @@ public readonly struct ResourceLocation
     /// <inheritdoc/>
     public override string ToString()
     {
-        return $"{Scheme}:{Value}";
+        return $"{Scheme}://{Value}";
     }
 }
