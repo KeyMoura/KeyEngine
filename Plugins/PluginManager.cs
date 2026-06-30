@@ -33,7 +33,7 @@ internal sealed class PluginManager
         LoadedPlugin[] discoveredPlugins =
             _loader.LoadPlugins(directory).ToArray();
 
-        foreach (LoadedPlugin plugin in OrderByDependencies(discoveredPlugins))
+        foreach (LoadedPlugin plugin in OrderPlugins(discoveredPlugins))
         {
             PluginBuilder builder = new(plugin.Context);
 
@@ -54,7 +54,7 @@ internal sealed class PluginManager
         }
     }
 
-    internal static IReadOnlyList<LoadedPlugin> OrderByDependencies(
+    internal static IReadOnlyList<LoadedPlugin> OrderPlugins(
         IReadOnlyList<LoadedPlugin> plugins)
     {
         ArgumentNullException.ThrowIfNull(plugins);
@@ -73,6 +73,60 @@ internal sealed class PluginManager
             }
         }
 
+        Dictionary<LoadedPlugin, List<LoadedPlugin>> prerequisites = [];
+
+        foreach (LoadedPlugin plugin in plugins)
+        {
+            prerequisites.Add(
+                plugin,
+                []);
+        }
+
+        foreach (LoadedPlugin plugin in plugins)
+        {
+            foreach (string dependencyId in plugin.Manifest.Dependencies)
+            {
+                if (!pluginsById.TryGetValue(
+                        dependencyId,
+                        out LoadedPlugin? dependency))
+                {
+                    throw new global::KeyEngine.Validation.EngineValidationException(
+                        $"Plugin '{plugin.Manifest.Id}' depends on missing plugin '{dependencyId}'.");
+                }
+
+                AddPrerequisite(
+                    prerequisites,
+                    plugin,
+                    dependency);
+            }
+
+            foreach (string targetId in plugin.Manifest.LoadAfter)
+            {
+                if (pluginsById.TryGetValue(
+                        targetId,
+                        out LoadedPlugin? target))
+                {
+                    AddPrerequisite(
+                        prerequisites,
+                        plugin,
+                        target);
+                }
+            }
+
+            foreach (string targetId in plugin.Manifest.LoadBefore)
+            {
+                if (pluginsById.TryGetValue(
+                        targetId,
+                        out LoadedPlugin? target))
+                {
+                    AddPrerequisite(
+                        prerequisites,
+                        target,
+                        plugin);
+                }
+            }
+        }
+
         List<LoadedPlugin> ordered = [];
         Dictionary<LoadedPlugin, VisitState> states = [];
         List<LoadedPlugin> path = [];
@@ -81,7 +135,7 @@ internal sealed class PluginManager
         {
             Visit(
                 plugin,
-                pluginsById,
+                prerequisites,
                 states,
                 path,
                 ordered);
@@ -90,9 +144,22 @@ internal sealed class PluginManager
         return ordered;
     }
 
+    private static void AddPrerequisite(
+        Dictionary<LoadedPlugin, List<LoadedPlugin>> prerequisites,
+        LoadedPlugin plugin,
+        LoadedPlugin prerequisite)
+    {
+        List<LoadedPlugin> pluginPrerequisites = prerequisites[plugin];
+
+        if (!pluginPrerequisites.Contains(prerequisite))
+        {
+            pluginPrerequisites.Add(prerequisite);
+        }
+    }
+
     private static void Visit(
         LoadedPlugin plugin,
-        IReadOnlyDictionary<string, LoadedPlugin> pluginsById,
+        IReadOnlyDictionary<LoadedPlugin, List<LoadedPlugin>> prerequisites,
         Dictionary<LoadedPlugin, VisitState> states,
         List<LoadedPlugin> path,
         List<LoadedPlugin> ordered)
@@ -115,7 +182,7 @@ internal sealed class PluginManager
                 .Append(plugin.Manifest.Id);
 
             throw new global::KeyEngine.Validation.EngineValidationException(
-                $"Plugin dependency cycle detected: {string.Join(" -> ", cycle)}.");
+                $"Plugin load-order cycle detected: {string.Join(" -> ", cycle)}.");
         }
 
         states.Add(
@@ -123,19 +190,11 @@ internal sealed class PluginManager
             VisitState.Visiting);
         path.Add(plugin);
 
-        foreach (string dependencyId in plugin.Manifest.Dependencies)
+        foreach (LoadedPlugin prerequisite in prerequisites[plugin])
         {
-            if (!pluginsById.TryGetValue(
-                    dependencyId,
-                    out LoadedPlugin? dependency))
-            {
-                throw new global::KeyEngine.Validation.EngineValidationException(
-                    $"Plugin '{plugin.Manifest.Id}' depends on missing plugin '{dependencyId}'.");
-            }
-
             Visit(
-                dependency,
-                pluginsById,
+                prerequisite,
+                prerequisites,
                 states,
                 path,
                 ordered);

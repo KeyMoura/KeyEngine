@@ -27,4 +27,16 @@ public sealed class PluginManifest : ApplicationInfo
     /// </summary>
     public IList<string> Dependencies { get; init; }
         = [];
+
+    /// <summary>
+    /// Gets the IDs of plugins that should load after this plugin when present.
+    /// </summary>
+    public IList<string> LoadBefore { get; init; }
+        = [];
+
+    /// <summary>
+    /// Gets the IDs of plugins that should load before this plugin when present.
+    /// </summary>
+    public IList<string> LoadAfter { get; init; }
+        = [];
 }
