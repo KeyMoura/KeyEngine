@@ -2,10 +2,10 @@
 
 ## Overview
 
-KeyEngine is a plugin-driven runtime host. Systems are the main execution unit:
-the engine discovers system types, builds their metadata, resolves their
-instances through dependency injection, and invokes lifecycle, command, and
-event methods through cached invokers.
+KeyEngine is a lightweight, plugin-driven runtime host. Systems are the main
+execution unit: the engine discovers system types, builds their metadata,
+resolves their instances through dependency injection, and invokes lifecycle,
+command, and event methods through cached invokers.
 
 The high-level flow is:
 
@@ -19,6 +19,7 @@ EngineBuilder
        -> build the service resolver
        -> invoke startup methods
   -> Engine.Tick
+       -> update input sources and aggregate input state
        -> update timers
        -> invoke update methods
        -> invoke due fixed updates
@@ -74,7 +75,8 @@ resolver chooses a public constructor and recursively resolves its parameters.
 Engine systems are resolved through the same service infrastructure, which
 ensures registered singleton systems are shared by lifecycle, command, and
 event dispatch. Core services include the engine, event bus, command manager,
-timer manager, resource manager, serializer, and filesystem implementation.
+timer manager, resource manager, serializer, network manager, input manager,
+and filesystem implementation.
 
 The container is intentionally limited and is not intended to reproduce a
 full-featured external DI framework.
@@ -104,6 +106,10 @@ Commands and events currently use synchronous dispatch.
   type and provider-neutral `ResourceLocation`.
 - **Serialization:** converts values to and from text through `ISerializer`; the
   default implementation uses indented JSON.
+- **Networking:** manages synchronous TCP clients, servers, and connections
+  using built-in .NET socket APIs.
+- **Input:** aggregates snapshot state from application-provided keyboard and
+  pointer sources once per frame without depending on a windowing platform.
 - **Numerics:** contains vector types, interpolation helpers, and two-dimensional
   graph data.
 - **Drawing:** currently provides an immutable color value and ANSI text color
@@ -118,6 +124,20 @@ without exposing `PluginManager` to consumers such as the Console plugin.
 Diagnostics should remain derived from subsystem state. KeyEngine should avoid
 creating a second mutable diagnostics registry that can drift from the runtime.
 
+## Optional extensions
+
+UI, Audio, Windowing, Rendering, and Physics are future optional packages or
+plugins, not required core dependencies. Integrations should feed existing
+boundaries, such as input sources and resource loaders, without coupling the
+core runtime to a specific platform stack.
+
+## Testing
+
+The initial xUnit contract suite exercises engine lifecycle transitions, event
+cancellation, resource location validation, resource dispatch and caching,
+multi-source input behavior, and timer completion cleanup. It is a focused
+alpha baseline rather than comprehensive production-readiness coverage.
+
 ## Design principles
 
 - Prefer explicit registration and APIs over hidden behavior.
@@ -129,4 +149,3 @@ creating a second mutable diagnostics registry that can drift from the runtime.
   explicitly.
 - Add abstractions only at real ownership or integration boundaries.
 - Favor clear failure messages during startup over deferred runtime failures.
-

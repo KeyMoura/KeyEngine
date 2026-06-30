@@ -1,34 +1,38 @@
 # KeyEngine
 
-KeyEngine is a modular, plugin-driven runtime framework built with C# and .NET.
+KeyEngine is a lightweight, plugin-driven runtime framework for .NET
+applications. It provides a small synchronous host for modular servers, tools,
+simulations, desktop applications, games, and other plugin-based software.
 
-KeyEngine is designed to power a wide range of applications including:
+## Current foundation
 
-- Games
-- Dedicated servers
-- Desktop applications
-- Simulations
-- Automotive tools
-- Plugin-based software
+The v0.1 alpha foundation includes:
 
-## Features
-
-- Plugin system
+- Engine lifecycle and frame scheduling
+- Assembly and plugin loading
 - Dependency injection
-- Event bus
-- Command framework
-- Scheduler
-- Timer system
-- Configuration system
-- Reflection-based discovery
-- Math library
-- Drawing utilities
+- Commands and events
+- Scheduler and timers
+- Configuration and JSON serialization
+- Typed resources and loader dispatch
+- Synchronous TCP networking
+- Provider-neutral input state
+- Numerics and drawing foundations
+- Engine and plugin diagnostics
+
+Optional systems such as UI, Audio, Windowing, Rendering, and Physics are
+future packages or plugins. They are not required core dependencies.
 
 ## Status
 
-KeyEngine is currently in active development.
+KeyEngine is an early alpha under active development. APIs and runtime
+contracts may change before 1.0, and the framework should not yet be considered
+production-ready.
 
-The public API may change as the framework development continues.
+The initial xUnit contract suite covers core lifecycle transitions, event
+cancellation, resource dispatch and caching, multi-source input behavior, and
+timer cleanup. Coverage is intentionally focused and will expand with stable
+contracts.
 
 ## License
 
