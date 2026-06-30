@@ -4,7 +4,7 @@ using System.Text;
 
 namespace KeyEngine.Logging;
 
-public static class Log
+internal static class Log
 {
     public static void Info(string message)
     {
