@@ -16,14 +16,21 @@ public sealed class ResourceManagerTests
         resources.Register("memory", memoryTextLoader);
         resources.Register("file", fileBinaryLoader);
 
-        ResourceHandle<TextResource> text = resources.Load<TextResource>(
-            new ResourceLocation("MEMORY", "message"));
+        ResourceLocation memoryLocation = new("MEMORY", "message");
+        ResourceHandle<TextResource> memoryText =
+            resources.Load<TextResource>(memoryLocation);
+        ResourceHandle<TextResource> cachedMemoryText =
+            resources.Load<TextResource>(memoryLocation);
+        ResourceHandle<TextResource> fileText = resources.Load<TextResource>(
+            new ResourceLocation("file", "message"));
         ResourceHandle<BinaryResource> binary = resources.Load<BinaryResource>(
             new ResourceLocation("file", "payload"));
 
-        Assert.Equal("memory", text.Resource.Source);
+        Assert.Same(memoryText, cachedMemoryText);
+        Assert.Equal("memory", memoryText.Resource.Source);
+        Assert.Equal("file", fileText.Resource.Source);
         Assert.Same(fileBinaryLoader.Resource, binary.Resource);
-        Assert.Equal(0, fileTextLoader.LoadCount);
+        Assert.Equal(1, fileTextLoader.LoadCount);
         Assert.Equal(1, memoryTextLoader.LoadCount);
         Assert.Equal(1, fileBinaryLoader.LoadCount);
     }

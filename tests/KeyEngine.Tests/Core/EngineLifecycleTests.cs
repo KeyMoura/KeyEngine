@@ -15,10 +15,12 @@ public sealed class EngineLifecycleTests
         engine.Initialize();
 
         Assert.Equal(EngineState.Running, engine.State);
+        Assert.Equal(0, engine.Diagnostics.FrameNumber);
         Assert.Equal(1, LifecycleTestSystem.StartupCount);
 
         engine.Tick();
 
+        Assert.Equal(1, engine.Diagnostics.FrameNumber);
         Assert.Equal(1, LifecycleTestSystem.UpdateCount);
 
         engine.Stop();
