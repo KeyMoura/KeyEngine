@@ -6,7 +6,7 @@ namespace KeyEngine.Plugins;
 /// <summary>
 /// Creates plugin contexts.
 /// </summary>
-public sealed class PluginContextFactory
+internal sealed class PluginContextFactory
 {
 
     /// <summary>

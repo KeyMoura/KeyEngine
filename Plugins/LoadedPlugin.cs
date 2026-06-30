@@ -5,7 +5,7 @@ namespace KeyEngine.Plugins;
 /// <summary>
 /// Represents a loaded plugin.
 /// </summary>
-public sealed class LoadedPlugin
+internal sealed class LoadedPlugin
 {
     /// <summary>
     /// Gets the plugin assembly.

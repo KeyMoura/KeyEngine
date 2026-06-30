@@ -3,7 +3,7 @@
 /// <summary>
 /// Registers services with the engine.
 /// </summary>
-public interface IServiceCollection
+internal interface IServiceCollection
 {
     /// <summary>
     /// Registers a singleton service.

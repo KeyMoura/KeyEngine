@@ -130,17 +130,17 @@ internal sealed class TypeScanner
 
         _commandValidator.Validate(method);
 
-        result.Add(new CommandMetadata
+        result.Add(new CommandMetadata(
+            CreateMethodMetadata(
+                declaringType,
+                method,
+                MethodKind.Command))
         {
             Name = attribute.Name,
             Aliases = attribute.Aliases,
             Description = attribute.Description,
             Usage = attribute.Usage,
-            Category = attribute.Category,
-            Method = CreateMethodMetadata(
-                declaringType,
-                method,
-                MethodKind.Command)
+            Category = attribute.Category
         });
     }
 

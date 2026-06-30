@@ -3,7 +3,7 @@
 /// <summary>
 /// Specifies the lifetime of a registered service.
 /// </summary>
-public enum ServiceLifetime
+internal enum ServiceLifetime
 {
     /// <summary>
     /// A single instance is created and reused.

@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a registered service.
 /// </summary>
-public sealed class ServiceDescriptor
+internal sealed class ServiceDescriptor
 {
     /// <summary>
     /// Gets the service type.

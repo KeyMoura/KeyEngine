@@ -9,10 +9,13 @@ namespace KeyEngine.Commands
         public IReadOnlyList<string> Aliases { get; init; }
             = [];
 
-        internal MethodMetadata Method { get; init; }
+        internal MethodMetadata Method { get; }
 
-        internal CommandMetadata()
+        internal CommandMetadata(MethodMetadata method)
         {
+            ArgumentNullException.ThrowIfNull(method);
+
+            Method = method;
         }
 
         /// <summary>

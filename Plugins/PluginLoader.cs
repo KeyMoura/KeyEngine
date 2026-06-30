@@ -5,7 +5,7 @@ namespace KeyEngine.Plugins;
 /// <summary>
 /// Loads plugins from disk.
 /// </summary>
-public sealed class PluginLoader
+internal sealed class PluginLoader
 {
 
     private readonly PluginManifestLoader _manifestLoader = new();

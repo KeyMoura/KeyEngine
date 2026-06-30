@@ -5,7 +5,7 @@ namespace KeyEngine.Plugins;
 /// <summary>
 /// Represents metadata about a plugin.
 /// </summary>
-public sealed class PluginInfo : ApplicationInfo
+internal sealed class PluginInfo : ApplicationInfo
 {
     /// <summary>
     /// Gets or sets the plugin identifier.

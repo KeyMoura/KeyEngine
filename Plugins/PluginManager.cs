@@ -3,7 +3,7 @@
 /// <summary>
 /// Manages loaded plugins.
 /// </summary>
-public sealed class PluginManager
+internal sealed class PluginManager
 {
     private readonly PluginLoader _loader = new();
 

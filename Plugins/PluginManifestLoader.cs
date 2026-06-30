@@ -7,7 +7,7 @@ namespace KeyEngine.Plugins;
 /// <summary>
 /// Loads plugin manifests.
 /// </summary>
-public sealed class PluginManifestLoader
+internal sealed class PluginManifestLoader
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
