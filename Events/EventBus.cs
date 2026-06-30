@@ -89,6 +89,12 @@ public sealed class EventBus
 
         foreach (EventListenerMetadata listener in GetListeners(typeof(TEvent)))
         {
+            if (@event is CancellableEvent { IsCancelled: true } &&
+                listener.IgnoreCancelled)
+            {
+                continue;
+            }
+
             // Temporary instance creation.
             object instance =
                 _systemRegistry.GetOrCreate(listener.Method.DeclaringType);
