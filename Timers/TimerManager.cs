@@ -3,13 +3,26 @@
 /// <summary>
 /// Manages active timers.
 /// </summary>
+/// <remarks>
+/// The manager owns timers created by <see cref="Start(TimeSpan)"/> and
+/// <see cref="StartRepeating(TimeSpan)"/>. Completed and cancelled timers are
+/// removed from manager tracking during the next update.
+/// </remarks>
 public sealed class TimerManager
 {
     private readonly List<Timer> _timers = [];
 
+    internal int ActiveTimerCount =>
+        _timers.Count(timer =>
+            timer.State is TimerState.Running or TimerState.Paused);
+
     /// <summary>
-    /// Gets all active timers.
+    /// Gets all timers currently tracked by the manager.
     /// </summary>
+    /// <remarks>
+    /// A completed or cancelled timer may remain in this collection until the
+    /// next manager update, but is no longer considered active.
+    /// </remarks>
     public IReadOnlyList<Timer> Timers => _timers;
 
     /// <summary>
@@ -19,7 +32,8 @@ public sealed class TimerManager
     /// The timer duration.
     /// </param>
     /// <returns>
-    /// The created timer.
+    /// The created timer. The manager retains ownership and removes it from
+    /// tracking after it completes or is cancelled.
     /// </returns>
     public Timer Start(
         TimeSpan duration)
@@ -36,6 +50,12 @@ public sealed class TimerManager
     /// <summary>
     /// Starts a repeating timer.
     /// </summary>
+    /// <param name="duration">
+    /// The duration of each repetition.
+    /// </param>
+    /// <returns>
+    /// The created timer. The manager retains ownership until it is cancelled.
+    /// </returns>
     public Timer StartRepeating(
         TimeSpan duration)
     {
@@ -54,7 +74,8 @@ public sealed class TimerManager
     /// Adds a timer.
     /// </summary>
     /// <param name="timer">
-    /// The timer.
+    /// The timer to track. Completed and cancelled timers are removed during
+    /// the next manager update.
     /// </param>
     public void Add(
         Timer timer)
@@ -91,9 +112,16 @@ public sealed class TimerManager
     internal void Update(
         TimeSpan deltaTime)
     {
-        foreach (Timer timer in _timers)
+        for (int i = _timers.Count - 1; i >= 0; i--)
         {
+            Timer timer = _timers[i];
+
             timer.Update(deltaTime);
+
+            if (timer.State is TimerState.Completed or TimerState.Cancelled)
+            {
+                _timers.Remove(timer);
+            }
         }
     }
 }

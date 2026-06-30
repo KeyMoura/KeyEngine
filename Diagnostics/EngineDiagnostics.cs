@@ -67,8 +67,12 @@ public sealed class EngineDiagnostics
     /// <summary>
     /// Gets the number of active timers.
     /// </summary>
+    /// <remarks>
+    /// Running and paused timers are active. Ready, completed, and cancelled
+    /// timers are not included.
+    /// </remarks>
     public int ActiveTimerCount =>
-        _engine.TimerManager.Timers.Count;
+        _engine.TimerManager.ActiveTimerCount;
 
     /// <summary>
     /// Gets diagnostic information for all loaded plugins.
