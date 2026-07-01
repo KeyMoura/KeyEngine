@@ -79,12 +79,19 @@ public sealed class AdminShell
         string command,
         CancellationToken cancellationToken = default)
     {
+        string[] parts =
+            SplitCommand(command);
+
+        string commandName = parts.Length > 0
+            ? parts[0].ToLowerInvariant()
+            : string.Empty;
+
         string normalized =
             command.Trim().ToLowerInvariant();
 
         try
         {
-            switch (normalized)
+            switch (commandName)
             {
                 case "":
                     return true;
@@ -117,6 +124,39 @@ public sealed class AdminShell
                     Console.Clear();
                     return true;
 
+                case "token":
+                    SetToken(parts);
+                    return true;
+
+                case "set-param":
+                    await SetParameterAsync(
+                        parts,
+                        cancellationToken);
+                    return true;
+
+                case "delete-param":
+                    await DeleteParameterAsync(
+                        parts,
+                        cancellationToken);
+                    return true;
+
+                case "save-params":
+                    await SaveParametersAsync(
+                        parts,
+                        cancellationToken);
+                    return true;
+
+                case "load-params":
+                    await LoadParametersAsync(
+                        parts,
+                        cancellationToken);
+                    return true;
+
+                case "clear-logs":
+                    await _client.ClearLogsAsync(cancellationToken);
+                    _output.WriteLine("Runtime logs cleared.");
+                    return true;
+
                 case "exit":
                 case "quit":
                     return false;
@@ -129,8 +169,7 @@ public sealed class AdminShell
         }
         catch (HttpRequestException exception)
         {
-            _error.WriteLine(
-                $"Unable to reach KeyEngine admin API at {_baseUri}: {exception.Message}");
+            WriteHttpError(exception);
             return true;
         }
         catch (TaskCanceledException exception)
@@ -158,9 +197,130 @@ public sealed class AdminShell
         _output.WriteLine("  parameters  Show runtime parameters.");
         _output.WriteLine("  logs        Show recent runtime logs.");
         _output.WriteLine("  routes      Show registered web/admin routes.");
+        _output.WriteLine("  token <value>");
+        _output.WriteLine("              Set the admin token for mutation commands.");
+        _output.WriteLine("  set-param <key> <value>");
+        _output.WriteLine("              Set a string runtime parameter.");
+        _output.WriteLine("  delete-param <key>");
+        _output.WriteLine("              Delete a runtime parameter.");
+        _output.WriteLine("  save-params <path>");
+        _output.WriteLine("              Save runtime parameters.");
+        _output.WriteLine("  load-params <path>");
+        _output.WriteLine("              Load runtime parameters.");
+        _output.WriteLine("  clear-logs  Clear runtime logs.");
         _output.WriteLine("  clear       Clear the console.");
         _output.WriteLine("  exit        Close the shell.");
         _output.WriteLine("  quit        Close the shell.");
+    }
+
+    private void SetToken(string[] parts)
+    {
+        if (parts.Length != 2 ||
+            string.IsNullOrWhiteSpace(parts[1]))
+        {
+            _output.WriteLine("Usage: token <value>");
+            return;
+        }
+
+        _client.AdminToken = parts[1];
+        _output.WriteLine("Admin token set.");
+    }
+
+    private async Task SetParameterAsync(
+        string[] parts,
+        CancellationToken cancellationToken)
+    {
+        if (parts.Length < 3)
+        {
+            _output.WriteLine("Usage: set-param <key> <value>");
+            return;
+        }
+
+        string value =
+            string.Join(
+                ' ',
+                parts.Skip(2));
+
+        await _client.SetParameterAsync(
+            parts[1],
+            value,
+            cancellationToken);
+
+        _output.WriteLine($"Parameter '{parts[1]}' updated.");
+    }
+
+    private async Task DeleteParameterAsync(
+        string[] parts,
+        CancellationToken cancellationToken)
+    {
+        if (parts.Length != 2)
+        {
+            _output.WriteLine("Usage: delete-param <key>");
+            return;
+        }
+
+        await _client.DeleteParameterAsync(
+            parts[1],
+            cancellationToken);
+
+        _output.WriteLine($"Parameter '{parts[1]}' deleted.");
+    }
+
+    private async Task SaveParametersAsync(
+        string[] parts,
+        CancellationToken cancellationToken)
+    {
+        if (parts.Length != 2)
+        {
+            _output.WriteLine("Usage: save-params <path>");
+            return;
+        }
+
+        await _client.SaveParametersAsync(
+            parts[1],
+            cancellationToken);
+
+        _output.WriteLine($"Parameters saved to '{parts[1]}'.");
+    }
+
+    private async Task LoadParametersAsync(
+        string[] parts,
+        CancellationToken cancellationToken)
+    {
+        if (parts.Length != 2)
+        {
+            _output.WriteLine("Usage: load-params <path>");
+            return;
+        }
+
+        await _client.LoadParametersAsync(
+            parts[1],
+            cancellationToken);
+
+        _output.WriteLine($"Parameters loaded from '{parts[1]}'.");
+    }
+
+    private void WriteHttpError(HttpRequestException exception)
+    {
+        if (exception.StatusCode is System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden)
+        {
+            _error.WriteLine(
+                "Admin API rejected the request. Set a valid admin token with 'token <value>' or start with '--token <value>'.");
+            _error.WriteLine(exception.Message);
+            return;
+        }
+
+        _error.WriteLine(
+            $"Unable to reach KeyEngine admin API at {_baseUri}: {exception.Message}");
+    }
+
+    private static string[] SplitCommand(string command)
+    {
+        return command
+            .Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     private void PrintStatus(AdminStatus? status)
