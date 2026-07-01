@@ -58,6 +58,7 @@ internal sealed class MainWindow
         _parameterDescriptionTextBox = CreateInput("Description (optional)");
         _parameterCategoryTextBox = CreateInput("Category (optional)");
         _parameterPersistencePathTextBox = CreateInput("Parameter file path");
+        _parameterPersistencePathTextBox.Text = "parameters.json";
         _staticRootTextBox = CreateInput("Static website root path");
         _detailText = new TextBlock
         {
@@ -130,6 +131,11 @@ internal sealed class MainWindow
             {
                 Text = "Persistence",
                 FontWeight = FontWeight.SemiBold
+            },
+            new TextBlock
+            {
+                Text = "The sample server loads parameters.json beside the server executable during startup. Startup-only settings such as web.static.root may require saving parameters and restarting the server.",
+                TextWrapping = TextWrapping.Wrap
             },
             _parameterPersistencePathTextBox,
             CreateButtonRow(
