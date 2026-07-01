@@ -48,6 +48,7 @@ public sealed class Engine
     private readonly NetworkManager _networkManager;
     private readonly InputManager _inputManager;
     private readonly ParameterManager _parameterManager;
+    private readonly RuntimeLogManager _runtimeLogManager;
     private readonly PluginManifestLoader _manifestLoader = new();
     private readonly PluginContextFactory _contextFactory = new();
 
@@ -90,6 +91,11 @@ public sealed class Engine
     /// Gets the engine runtime parameter manager.
     /// </summary>
     public ParameterManager Parameters => _parameterManager;
+
+    /// <summary>
+    /// Gets the engine runtime log manager.
+    /// </summary>
+    public RuntimeLogManager Logs => _runtimeLogManager;
 
     public EngineDiagnostics Diagnostics { get; }
 
@@ -149,6 +155,8 @@ public sealed class Engine
             _fileSystem,
             _serializer);
 
+        _runtimeLogManager = new RuntimeLogManager();
+
         Diagnostics = new EngineDiagnostics(this);
 
         _services.AddSingleton<Engine>(this);
@@ -163,6 +171,7 @@ public sealed class Engine
         _services.AddSingleton(_networkManager);
         _services.AddSingleton(_inputManager);
         _services.AddSingleton(_parameterManager);
+        _services.AddSingleton(_runtimeLogManager);
     }
 
     /// <summary>
@@ -199,6 +208,10 @@ public sealed class Engine
         State = EngineState.Initializing;
 
         Log.Info("Initializing...");
+        _runtimeLogManager.Add(
+            "Info",
+            "Initializing...",
+            "Engine");
 
         _pluginManager.Load(
             _options.PluginDirectory);
@@ -208,6 +221,11 @@ public sealed class Engine
         {
             Log.Info(
                 $"Loaded plugin '{plugin.Manifest.Name}' v{plugin.Manifest.Version}");
+            _runtimeLogManager.Add(
+                "Info",
+                $"Loaded plugin '{plugin.Manifest.Name}' v{plugin.Manifest.Version}",
+                "Plugins",
+                plugin.Manifest.Id);
 
             PluginBuilder builder =
                 _pluginManager.GetBuilder(plugin);
@@ -216,6 +234,11 @@ public sealed class Engine
             {
                 Log.Info(
                     $"Plugin '{plugin.Instance.GetType().Name}' registered system '{system.Name}'.");
+                _runtimeLogManager.Add(
+                    "Info",
+                    $"Plugin '{plugin.Instance.GetType().Name}' registered system '{system.Name}'.",
+                    "Plugins",
+                    plugin.Manifest.Id);
 
                 ScanResult result =
                     _typeScanner.Scan(system);
@@ -265,6 +288,10 @@ public sealed class Engine
         State = EngineState.Running;
 
         Log.Info("Running...");
+        _runtimeLogManager.Add(
+            "Info",
+            "Running...",
+            "Engine");
     }
 
     /// <summary>
@@ -319,6 +346,10 @@ public sealed class Engine
         State = EngineState.ShuttingDown;
 
         Log.Info("Shutting down...");
+        _runtimeLogManager.Add(
+            "Info",
+            "Shutting down...",
+            "Engine");
 
         try
         {

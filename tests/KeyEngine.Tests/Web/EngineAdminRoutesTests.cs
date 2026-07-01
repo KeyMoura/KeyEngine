@@ -86,6 +86,87 @@ public sealed class EngineAdminRoutesTests
     }
 
     [Fact]
+    public void LogsRoute_ReturnsRecentRuntimeLogEntries()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Logs.Add(
+                "Info",
+                "Test log entry",
+                "Tests",
+                "EngineAdminRoutesTests");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/logs"));
+            using JsonDocument json = JsonDocument.Parse(response.Body);
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Contains(
+                json.RootElement.EnumerateArray(),
+                entry => entry.GetProperty("Message").GetString() == "Test log entry");
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void LogsDelete_ConfiguredAdminToken_RejectsMissingHeader()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            engine.Logs.Add("Info", "Test log entry");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("DELETE", "/api/logs"));
+
+            Assert.Equal(401, response.StatusCode);
+            Assert.NotEmpty(engine.Logs.GetRecent());
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void LogsDelete_CorrectAdminToken_ClearsRuntimeLogEntries()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            engine.Logs.Add("Info", "Test log entry");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreateLogsDeleteRequest("secret"));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Empty(engine.Logs.GetRecent());
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
     public void ParametersRoute_ReturnsRegisteredParameters()
     {
         Engine engine = TestEngineFactory.Create();
@@ -593,6 +674,17 @@ public sealed class EngineAdminRoutesTests
             "POST",
             path,
             body: body);
+    }
+
+    private static HttpRequestContext CreateLogsDeleteRequest(string adminToken)
+    {
+        return new HttpRequestContext(
+            "DELETE",
+            "/api/logs",
+            headers: new Dictionary<string, string>
+            {
+                ["X-KeyEngine-Admin-Token"] = adminToken
+            });
     }
 
     private static string CreateTemporaryPath()

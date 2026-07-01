@@ -20,8 +20,8 @@ public static class EngineAdminRoutes
     private const string AdminTokenHeaderName = "X-KeyEngine-Admin-Token";
 
     /// <summary>
-    /// Maps the basic KeyEngine health, status, plugin diagnostic, and
-    /// parameter routes.
+    /// Maps the basic KeyEngine health, status, plugin diagnostic, runtime
+    /// log, and parameter routes.
     /// </summary>
     /// <param name="server">
     /// The server that receives the routes.
@@ -73,6 +73,19 @@ public static class EngineAdminRoutes
                 }).ToArray()));
 
         server.MapGet(
+            "/api/logs",
+            (_, response) => response.Body = engine.Serializer.Serialize(
+                engine.Logs.GetRecent()));
+
+        server.Map(
+            "DELETE",
+            "/api/logs",
+            (request, response) => ClearLogs(
+                engine,
+                request,
+                response));
+
+        server.MapGet(
             "/api/parameters",
             (_, response) => response.Body = engine.Serializer.Serialize(
                 engine.Parameters.GetAll()
@@ -114,6 +127,27 @@ public static class EngineAdminRoutes
                 engine,
                 request,
                 response));
+    }
+
+    private static void ClearLogs(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        if (!AuthorizeMutation(
+                engine,
+                request,
+                response))
+        {
+            return;
+        }
+
+        engine.Logs.Clear();
+
+        response.Body = engine.Serializer.Serialize(new
+        {
+            Cleared = true
+        });
     }
 
     private static void GetParameter(
