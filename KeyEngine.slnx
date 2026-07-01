@@ -5,6 +5,7 @@
   <Project Path="KeyEngine.csproj" />
   <Project Path="KeyEngine.AdminApp/KeyEngine.AdminApp.csproj" />
   <Project Path="KeyEngine.AdminClient/KeyEngine.AdminClient.csproj" />
+  <Project Path="KeyEngine.AdminDashboard/KeyEngine.AdminDashboard.csproj" />
   <Project Path="KeyEngine.Web/KeyEngine.Web.csproj" />
   <Project Path="tests/KeyEngine.Tests/KeyEngine.Tests.csproj" />
 </Solution>
