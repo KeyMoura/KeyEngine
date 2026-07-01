@@ -10,7 +10,8 @@ namespace KeyEngine.AdminDashboard;
 internal sealed class MainWindow
     : Window
 {
-    private readonly IAdminApiClient _client;
+    private IAdminApiClient _client;
+    private HttpClient _httpClient;
     private readonly TextBlock _connectionText;
     private readonly TextBlock _applicationText;
     private readonly TextBlock _engineStateText;
@@ -19,6 +20,7 @@ internal sealed class MainWindow
     private readonly TextBlock _logCountText;
     private readonly TextBlock _detailText;
     private readonly TextBlock _adminTokenStatusText;
+    private readonly TextBox _serverUrlTextBox;
     private readonly TextBox _adminTokenTextBox;
     private readonly TextBox _parameterKeyTextBox;
     private readonly TextBox _parameterValueTextBox;
@@ -26,11 +28,10 @@ internal sealed class MainWindow
     private readonly TextBox _parameterCategoryTextBox;
     private readonly TextBox _parameterPersistencePathTextBox;
 
-    public MainWindow(
-        Uri serverUri,
-        IAdminApiClient client)
+    public MainWindow(Uri serverUri)
     {
-        _client = client;
+        _httpClient = CreateHttpClient(serverUri);
+        _client = new AdminApiClient(_httpClient);
 
         Title = "KeyEngine Admin Dashboard";
         Width = 820;
@@ -45,6 +46,8 @@ internal sealed class MainWindow
         _parameterCountText = CreateValue("-");
         _logCountText = CreateValue("-");
         _adminTokenStatusText = CreateValue("Not set");
+        _serverUrlTextBox = CreateInput("Server URL");
+        _serverUrlTextBox.Text = serverUri.ToString();
         _adminTokenTextBox = CreateInput("Admin token");
         _adminTokenTextBox.PasswordChar = '*';
         _parameterKeyTextBox = CreateInput("Parameter key");
@@ -60,13 +63,14 @@ internal sealed class MainWindow
 
         Content = new ScrollViewer
         {
-            Content = CreateLayout(serverUri),
+            Content = CreateLayout(),
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
         };
         Opened += async (_, _) => await RefreshStatusAsync();
+        Closed += (_, _) => _httpClient.Dispose();
     }
 
-    private Control CreateLayout(Uri serverUri)
+    private Control CreateLayout()
     {
         StackPanel root = new()
         {
@@ -85,7 +89,8 @@ internal sealed class MainWindow
 
         root.Children.Add(CreateSection(
             "Connection",
-            CreateRow("Server URL", serverUri.ToString()),
+            _serverUrlTextBox,
+            CreateButtonRow(CreateButton("Connect", ApplyServerAsync)),
             CreateRow("Connection", _connectionText),
             CreateRow("Token status", _adminTokenStatusText),
             _adminTokenTextBox,
@@ -244,6 +249,44 @@ internal sealed class MainWindow
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task ApplyServerAsync()
+    {
+        string value = _serverUrlTextBox.Text?.Trim() ?? string.Empty;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? serverUri) ||
+            (serverUri.Scheme != Uri.UriSchemeHttp &&
+             serverUri.Scheme != Uri.UriSchemeHttps))
+        {
+            _detailText.Text =
+                "Enter a valid absolute HTTP or HTTPS server URL.";
+            return;
+        }
+
+        string? adminToken = _client.AdminToken;
+        HttpClient previousHttpClient = _httpClient;
+        _httpClient = CreateHttpClient(serverUri);
+        _client = new AdminApiClient(_httpClient)
+        {
+            AdminToken = adminToken
+        };
+        previousHttpClient.Dispose();
+
+        _serverUrlTextBox.Text = serverUri.ToString();
+        ResetStatus();
+
+        await RunRequestAsync(async () =>
+        {
+            _connectionText.Text = "Connecting...";
+            AdminStatus? status = await _client.GetStatusAsync();
+            if (status is null)
+            {
+                throw new HttpRequestException("The server returned no status data.");
+            }
+
+            UpdateStatus(status);
+            _detailText.Text = $"Connected successfully to {serverUri}.";
+        });
     }
 
     private async Task DeleteParameterAsync()
@@ -477,6 +520,14 @@ internal sealed class MainWindow
         };
     }
 
+    private static HttpClient CreateHttpClient(Uri serverUri)
+    {
+        return new HttpClient
+        {
+            BaseAddress = serverUri
+        };
+    }
+
     private static string? NullIfWhiteSpace(string? value)
     {
         return string.IsNullOrWhiteSpace(value)
@@ -492,6 +543,16 @@ internal sealed class MainWindow
         _pluginCountText.Text = status.PluginCount.ToString();
         _parameterCountText.Text = status.ParameterCount.ToString();
         _logCountText.Text = status.RuntimeLogCount.ToString();
+    }
+
+    private void ResetStatus()
+    {
+        _connectionText.Text = "Not connected";
+        _applicationText.Text = "-";
+        _engineStateText.Text = "-";
+        _pluginCountText.Text = "-";
+        _parameterCountText.Text = "-";
+        _logCountText.Text = "-";
     }
 
     private static string FormatParameterList(IReadOnlyList<AdminParameter> parameters)
