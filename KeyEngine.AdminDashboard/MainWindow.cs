@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using KeyEngine.AdminClient;
+using System.Text.Json;
 
 namespace KeyEngine.AdminDashboard;
 
@@ -31,11 +32,11 @@ internal sealed class MainWindow
         MinHeight = 420;
 
         _connectionText = CreateValue("Not connected");
-        _applicationText = CreateValue("—");
-        _engineStateText = CreateValue("—");
-        _pluginCountText = CreateValue("—");
-        _parameterCountText = CreateValue("—");
-        _logCountText = CreateValue("—");
+        _applicationText = CreateValue("-");
+        _engineStateText = CreateValue("-");
+        _pluginCountText = CreateValue("-");
+        _parameterCountText = CreateValue("-");
+        _logCountText = CreateValue("-");
         _detailText = new TextBlock
         {
             Text = "Select Refresh to query the server.",
@@ -68,15 +69,15 @@ internal sealed class MainWindow
         root.Children.Add(CreateRow("Parameters", _parameterCountText));
         root.Children.Add(CreateRow("Runtime logs", _logCountText));
 
-        StackPanel buttons = new()
+        WrapPanel buttons = new()
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8
+            Orientation = Orientation.Horizontal
         };
         buttons.Children.Add(CreateButton("Refresh", RefreshStatusAsync));
         buttons.Children.Add(CreateButton("View plugins", ShowPluginsAsync));
         buttons.Children.Add(CreateButton("View parameters", ShowParametersAsync));
         buttons.Children.Add(CreateButton("View logs", ShowLogsAsync));
+        buttons.Children.Add(CreateButton("View routes", ShowRoutesAsync));
         root.Children.Add(buttons);
 
         root.Children.Add(new Border
@@ -99,7 +100,7 @@ internal sealed class MainWindow
     {
         await RunRequestAsync(async () =>
         {
-            _connectionText.Text = "Connecting…";
+            _connectionText.Text = "Connecting...";
             AdminStatus? status = await _client.GetStatusAsync();
 
             if (status is null)
@@ -124,9 +125,10 @@ internal sealed class MainWindow
             IReadOnlyList<AdminPlugin> plugins = await _client.GetPluginsAsync();
             _detailText.Text = plugins.Count == 0
                 ? "No plugins reported."
-                : string.Join(
-                    Environment.NewLine,
-                    plugins.Select(plugin => $"{plugin.Id} {plugin.Version} — {plugin.State}"));
+                : $"Plugins ({plugins.Count}){Environment.NewLine}{Environment.NewLine}" +
+                  string.Join(
+                      Environment.NewLine,
+                      plugins.Select(FormatPlugin));
         });
     }
 
@@ -137,9 +139,10 @@ internal sealed class MainWindow
             IReadOnlyList<AdminParameter> parameters = await _client.GetParametersAsync();
             _detailText.Text = parameters.Count == 0
                 ? "No parameters reported."
-                : string.Join(
-                    Environment.NewLine,
-                    parameters.Select(parameter => $"{parameter.Key} = {parameter.Value}"));
+                : $"Parameters ({parameters.Count}){Environment.NewLine}{Environment.NewLine}" +
+                  string.Join(
+                      Environment.NewLine,
+                      parameters.Select(FormatParameter));
         });
     }
 
@@ -150,9 +153,24 @@ internal sealed class MainWindow
             IReadOnlyList<AdminLogEntry> logs = await _client.GetLogsAsync();
             _detailText.Text = logs.Count == 0
                 ? "No runtime logs reported."
-                : string.Join(
-                    Environment.NewLine,
-                    logs.Select(entry => $"{entry.Timestamp:u} [{entry.Level}] {entry.Message}"));
+                : $"Runtime logs ({logs.Count}){Environment.NewLine}{Environment.NewLine}" +
+                  string.Join(
+                      Environment.NewLine,
+                      logs.Select(FormatLogEntry));
+        });
+    }
+
+    private async Task ShowRoutesAsync()
+    {
+        await RunRequestAsync(async () =>
+        {
+            IReadOnlyList<AdminRoute> routes = await _client.GetRoutesAsync();
+            _detailText.Text = routes.Count == 0
+                ? "No routes reported."
+                : $"Routes ({routes.Count}){Environment.NewLine}{Environment.NewLine}" +
+                  string.Join(
+                      Environment.NewLine,
+                      routes.Select(FormatRoute));
         });
     }
 
@@ -163,7 +181,7 @@ internal sealed class MainWindow
             await request();
         }
         catch (Exception exception) when (
-            exception is HttpRequestException or TaskCanceledException)
+            exception is HttpRequestException or TaskCanceledException or JsonException)
         {
             _connectionText.Text = "Unavailable";
             _detailText.Text = $"Unable to reach the server: {exception.Message}";
@@ -176,7 +194,8 @@ internal sealed class MainWindow
     {
         Button button = new()
         {
-            Content = text
+            Content = text,
+            Margin = new Thickness(0, 0, 8, 8)
         };
         button.Click += async (_, _) => await action();
         return button;
@@ -216,5 +235,48 @@ internal sealed class MainWindow
         {
             Text = text
         };
+    }
+
+    private static string FormatPlugin(AdminPlugin plugin)
+    {
+        string identity = string.IsNullOrWhiteSpace(plugin.Name)
+            ? plugin.Id ?? "Unknown plugin"
+            : $"{plugin.Name} ({plugin.Id})";
+
+        return $"{identity} | Version: {plugin.Version ?? "Unknown"} | State: {plugin.State ?? "Unknown"}";
+    }
+
+    private static string FormatParameter(AdminParameter parameter)
+    {
+        string category = string.IsNullOrWhiteSpace(parameter.Category)
+            ? string.Empty
+            : $" [{parameter.Category}]";
+        string readOnly = parameter.IsReadOnly
+            ? " | Read-only"
+            : string.Empty;
+
+        return $"{parameter.Key}{category} = {parameter.Value} | Type: {parameter.ValueType ?? "Unknown"}{readOnly}";
+    }
+
+    private static string FormatLogEntry(AdminLogEntry entry)
+    {
+        string context = string.IsNullOrWhiteSpace(entry.Category) &&
+                         string.IsNullOrWhiteSpace(entry.Source)
+            ? string.Empty
+            : $" ({entry.Category ?? entry.Source})";
+
+        return $"{entry.Timestamp:u} [{entry.Level ?? "Unknown"}]{context} {entry.Message}";
+    }
+
+    private static string FormatRoute(AdminRoute route)
+    {
+        string protection = route.RequiresAdminToken
+            ? " | Admin token required"
+            : string.Empty;
+        string description = string.IsNullOrWhiteSpace(route.Description)
+            ? string.Empty
+            : $" | {route.Description}";
+
+        return $"{route.Method} {route.Path}{protection}{description}";
     }
 }
