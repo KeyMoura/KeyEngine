@@ -139,6 +139,18 @@ internal sealed class MainWindow
         persistenceButtons.Children.Add(CreateButton("Load parameters", LoadParametersAsync));
         root.Children.Add(persistenceButtons);
 
+        root.Children.Add(new TextBlock
+        {
+            Text = "Runtime logs",
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold
+        });
+
+        WrapPanel logButtons = new();
+        logButtons.Children.Add(CreateButton("Refresh logs", ShowLogsAsync));
+        logButtons.Children.Add(CreateButton("Clear logs", ClearLogsAsync));
+        root.Children.Add(logButtons);
+
         root.Children.Add(new Border
         {
             BorderBrush = Brushes.Gray,
@@ -200,12 +212,7 @@ internal sealed class MainWindow
         await RunRequestAsync(async () =>
         {
             IReadOnlyList<AdminLogEntry> logs = await _client.GetLogsAsync();
-            _detailText.Text = logs.Count == 0
-                ? "No runtime logs reported."
-                : $"Runtime logs ({logs.Count}){Environment.NewLine}{Environment.NewLine}" +
-                  string.Join(
-                      Environment.NewLine,
-                      logs.Select(FormatLogEntry));
+            _detailText.Text = FormatLogList(logs);
         });
     }
 
@@ -328,6 +335,28 @@ internal sealed class MainWindow
         });
     }
 
+    private async Task ClearLogsAsync()
+    {
+        await RunRequestAsync(async () =>
+        {
+            await _client.ClearLogsAsync();
+
+            AdminStatus? status = await _client.GetStatusAsync();
+            if (status is null)
+            {
+                throw new HttpRequestException("The server returned no status data.");
+            }
+
+            IReadOnlyList<AdminLogEntry> logs = await _client.GetLogsAsync();
+            UpdateStatus(status);
+            _detailText.Text =
+                "Runtime logs were cleared successfully." +
+                Environment.NewLine +
+                Environment.NewLine +
+                FormatLogList(logs);
+        });
+    }
+
     private async Task RunRequestAsync(Func<Task> request)
     {
         try
@@ -431,6 +460,16 @@ internal sealed class MainWindow
               string.Join(
                   Environment.NewLine,
                   parameters.Select(FormatParameter));
+    }
+
+    private static string FormatLogList(IReadOnlyList<AdminLogEntry> logs)
+    {
+        return logs.Count == 0
+            ? "No runtime logs reported."
+            : $"Runtime logs ({logs.Count}){Environment.NewLine}{Environment.NewLine}" +
+              string.Join(
+                  Environment.NewLine,
+                  logs.Select(FormatLogEntry));
     }
 
     private static string FormatPlugin(AdminPlugin plugin)
