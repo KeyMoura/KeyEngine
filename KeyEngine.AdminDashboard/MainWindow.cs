@@ -20,6 +20,7 @@ internal sealed class MainWindow
     private readonly TextBlock _logCountText;
     private readonly TextBlock _detailText;
     private readonly TextBlock _adminTokenStatusText;
+    private readonly TextBlock _staticRootStatusText;
     private readonly TextBox _serverUrlTextBox;
     private readonly TextBox _adminTokenTextBox;
     private readonly TextBox _parameterKeyTextBox;
@@ -27,6 +28,7 @@ internal sealed class MainWindow
     private readonly TextBox _parameterDescriptionTextBox;
     private readonly TextBox _parameterCategoryTextBox;
     private readonly TextBox _parameterPersistencePathTextBox;
+    private readonly TextBox _staticRootTextBox;
 
     public MainWindow(Uri serverUri)
     {
@@ -46,6 +48,7 @@ internal sealed class MainWindow
         _parameterCountText = CreateValue("-");
         _logCountText = CreateValue("-");
         _adminTokenStatusText = CreateValue("Not set");
+        _staticRootStatusText = CreateValue("Using default sample root");
         _serverUrlTextBox = CreateInput("Server URL");
         _serverUrlTextBox.Text = serverUri.ToString();
         _adminTokenTextBox = CreateInput("Admin token");
@@ -55,6 +58,7 @@ internal sealed class MainWindow
         _parameterDescriptionTextBox = CreateInput("Description (optional)");
         _parameterCategoryTextBox = CreateInput("Category (optional)");
         _parameterPersistencePathTextBox = CreateInput("Parameter file path");
+        _staticRootTextBox = CreateInput("Static website root path");
         _detailText = new TextBlock
         {
             Text = "Select Refresh to query the server.",
@@ -104,6 +108,12 @@ internal sealed class MainWindow
             CreateRow("Parameters", _parameterCountText),
             CreateRow("Runtime logs", _logCountText),
             CreateButtonRow(CreateButton("Refresh", RefreshStatusAsync))));
+
+        root.Children.Add(CreateSection(
+            "Website Hosting",
+            CreateRow("Current root", _staticRootStatusText),
+            _staticRootTextBox,
+            CreateButtonRow(CreateButton("Set static root", SetStaticRootAsync))));
 
         root.Children.Add(CreateSection(
             "Parameters",
@@ -156,7 +166,10 @@ internal sealed class MainWindow
                 throw new HttpRequestException("The server returned no status data.");
             }
 
+            IReadOnlyList<AdminParameter> parameters =
+                await _client.GetParametersAsync();
             UpdateStatus(status);
+            UpdateStaticRootStatus(parameters);
             _detailText.Text = "Server status refreshed.";
         });
     }
@@ -180,6 +193,7 @@ internal sealed class MainWindow
         await RunRequestAsync(async () =>
         {
             IReadOnlyList<AdminParameter> parameters = await _client.GetParametersAsync();
+            UpdateStaticRootStatus(parameters);
             _detailText.Text = FormatParameterList(parameters);
         });
     }
@@ -284,7 +298,10 @@ internal sealed class MainWindow
                 throw new HttpRequestException("The server returned no status data.");
             }
 
+            IReadOnlyList<AdminParameter> parameters =
+                await _client.GetParametersAsync();
             UpdateStatus(status);
+            UpdateStaticRootStatus(parameters);
             _detailText.Text = $"Connected successfully to {serverUri}.";
         });
     }
@@ -302,6 +319,29 @@ internal sealed class MainWindow
         {
             await _client.DeleteParameterAsync(key);
             _detailText.Text = $"Parameter '{key}' was deleted successfully.";
+        });
+    }
+
+    private async Task SetStaticRootAsync()
+    {
+        string path = _staticRootTextBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            _detailText.Text = "A static website root path is required.";
+            return;
+        }
+
+        await RunRequestAsync(async () =>
+        {
+            await _client.SetParameterAsync(
+                "web.static.root",
+                path,
+                "Static website root directory",
+                "Web");
+
+            _staticRootStatusText.Text = path;
+            _detailText.Text =
+                "Static website root was set successfully. The sample server applies this setting when static hosting next starts.";
         });
     }
 
@@ -342,6 +382,7 @@ internal sealed class MainWindow
 
             IReadOnlyList<AdminParameter> parameters = await _client.GetParametersAsync();
             UpdateStatus(status);
+            UpdateStaticRootStatus(parameters);
             _detailText.Text =
                 $"Parameters were loaded successfully from '{path}'." +
                 Environment.NewLine +
@@ -553,6 +594,27 @@ internal sealed class MainWindow
         _pluginCountText.Text = "-";
         _parameterCountText.Text = "-";
         _logCountText.Text = "-";
+        _staticRootStatusText.Text = "Unknown";
+    }
+
+    private void UpdateStaticRootStatus(IReadOnlyList<AdminParameter> parameters)
+    {
+        AdminParameter? staticRoot = parameters.FirstOrDefault(parameter =>
+            StringComparer.Ordinal.Equals(
+                parameter.Key,
+                "web.static.root"));
+
+        if (staticRoot is null ||
+            staticRoot.Value.ValueKind == JsonValueKind.Null ||
+            string.IsNullOrWhiteSpace(staticRoot.Value.ToString()))
+        {
+            _staticRootStatusText.Text = "Using default sample root";
+            return;
+        }
+
+        _staticRootStatusText.Text = staticRoot.Value.ValueKind == JsonValueKind.String
+            ? staticRoot.Value.GetString() ?? "Using default sample root"
+            : staticRoot.Value.ToString();
     }
 
     private static string FormatParameterList(IReadOnlyList<AdminParameter> parameters)
