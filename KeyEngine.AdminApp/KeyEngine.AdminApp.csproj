@@ -7,4 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\KeyEngine.AdminClient\KeyEngine.AdminClient.csproj" />
+  </ItemGroup>
+
 </Project>

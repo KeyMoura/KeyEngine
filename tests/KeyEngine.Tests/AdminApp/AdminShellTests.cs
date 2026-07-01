@@ -1,4 +1,5 @@
 using KeyEngine.AdminApp;
+using KeyEngine.AdminClient;
 
 namespace KeyEngine.Tests.AdminApp;
 

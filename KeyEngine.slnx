@@ -4,6 +4,7 @@
   <Project Path="../TestPlugin/KeyEngine.TestPlugin.csproj" Id="b256b7bd-dba8-414c-ad2a-0961641f0da7" />
   <Project Path="KeyEngine.csproj" />
   <Project Path="KeyEngine.AdminApp/KeyEngine.AdminApp.csproj" />
+  <Project Path="KeyEngine.AdminClient/KeyEngine.AdminClient.csproj" />
   <Project Path="KeyEngine.Web/KeyEngine.Web.csproj" />
   <Project Path="tests/KeyEngine.Tests/KeyEngine.Tests.csproj" />
 </Solution>

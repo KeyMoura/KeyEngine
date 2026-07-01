@@ -1,4 +1,5 @@
 using KeyEngine.AdminApp;
+using KeyEngine.AdminClient;
 
 AdminAppOptions options = ParseOptions(args);
 using HttpClient httpClient = new()

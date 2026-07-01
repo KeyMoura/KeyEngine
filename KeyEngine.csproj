@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <Compile Remove="KeyEngine.AdminApp/**/*.cs" />
+    <Compile Remove="KeyEngine.AdminClient/**/*.cs" />
     <Compile Remove="KeyEngine.Web/**/*.cs" />
   </ItemGroup>
 

@@ -1,3 +1,5 @@
+using KeyEngine.AdminClient;
+
 namespace KeyEngine.AdminApp;
 
 /// <summary>
