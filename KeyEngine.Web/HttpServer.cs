@@ -338,7 +338,25 @@ public sealed class HttpServer
             request.HttpMethod,
             request.Url?.AbsolutePath ?? "/",
             ToDictionary(request.QueryString),
-            ToDictionary(request.Headers));
+            ToDictionary(request.Headers),
+            ReadBody(request));
+    }
+
+    private static string ReadBody(HttpListenerRequest request)
+    {
+        if (!request.HasEntityBody)
+        {
+            return string.Empty;
+        }
+
+        using StreamReader reader = new(
+            request.InputStream,
+            request.ContentEncoding ?? Encoding.UTF8,
+            true,
+            1024,
+            true);
+
+        return reader.ReadToEnd();
     }
 
     private static IReadOnlyDictionary<string, string> ToDictionary(

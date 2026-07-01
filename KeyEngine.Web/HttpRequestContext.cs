@@ -25,11 +25,17 @@ public sealed class HttpRequestContext
     /// </summary>
     public IReadOnlyDictionary<string, string> Headers { get; }
 
+    /// <summary>
+    /// Gets the request body text.
+    /// </summary>
+    public string Body { get; }
+
     internal HttpRequestContext(
         string method,
         string path,
         IReadOnlyDictionary<string, string>? query = null,
-        IReadOnlyDictionary<string, string>? headers = null)
+        IReadOnlyDictionary<string, string>? headers = null,
+        string body = "")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(method);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -38,5 +44,6 @@ public sealed class HttpRequestContext
         Path = path;
         Query = query ?? new Dictionary<string, string>();
         Headers = headers ?? new Dictionary<string, string>();
+        Body = body ?? string.Empty;
     }
 }

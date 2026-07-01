@@ -85,8 +85,142 @@ public sealed class EngineAdminRoutesTests
         }
     }
 
+    [Fact]
+    public void ParametersRoute_ReturnsRegisteredParameters()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set(
+                "server.port",
+                5000,
+                "HTTP port",
+                "Server");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/parameters"));
+            using JsonDocument json = JsonDocument.Parse(response.Body);
+            JsonElement parameter = Assert.Single(
+                json.RootElement.EnumerateArray());
+
+            Assert.Equal("server.port", parameter.GetProperty("Key").GetString());
+            Assert.Equal(5000, parameter.GetProperty("Value").GetInt32());
+            Assert.Equal("System.Int32", parameter.GetProperty("ValueType").GetString());
+            Assert.Equal("HTTP port", parameter.GetProperty("Description").GetString());
+            Assert.Equal("Server", parameter.GetProperty("Category").GetString());
+            Assert.False(parameter.GetProperty("IsReadOnly").GetBoolean());
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParametersPost_CreatesAndUpdatesParameter()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext created = server.Dispatch(
+                CreateParameterRequest("enabled"));
+            HttpResponseContext updated = server.Dispatch(
+                CreateParameterRequest("disabled"));
+
+            Assert.Equal(200, created.StatusCode);
+            Assert.Equal(200, updated.StatusCode);
+            Assert.Equal(
+                "disabled",
+                engine.Parameters.Get<string>("feature.mode"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParametersPost_ReadOnlyParameter_ReturnsConflict()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set(
+                "feature.mode",
+                "locked",
+                isReadOnly: true);
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreateParameterRequest("changed"));
+
+            Assert.Equal(409, response.StatusCode);
+            Assert.Contains("read-only", response.Body);
+            Assert.Equal(
+                "locked",
+                engine.Parameters.Get<string>("feature.mode"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParametersPost_MissingKey_ReturnsBadRequest()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext(
+                    "POST",
+                    "/api/parameters",
+                    body: """{"value":"enabled"}"""));
+
+            Assert.Equal(400, response.StatusCode);
+            Assert.Contains("key", response.Body);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
     private static HttpServer CreateServer()
     {
         return new HttpServer("http://127.0.0.1:8080/");
+    }
+
+    private static HttpRequestContext CreateParameterRequest(string value)
+    {
+        return new HttpRequestContext(
+            "POST",
+            "/api/parameters",
+            body: $$"""
+                {
+                  "key": "feature.mode",
+                  "value": "{{value}}",
+                  "description": "Feature mode",
+                  "category": "Features"
+                }
+                """);
     }
 }
