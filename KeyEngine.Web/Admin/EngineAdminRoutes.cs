@@ -1,5 +1,6 @@
 using KeyEngine.Core;
 using KeyEngine.Parameters;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace KeyEngine.Web.Admin;
@@ -48,13 +49,22 @@ public static class EngineAdminRoutes
 
                 response.Body = engine.Serializer.Serialize(new
                 {
+                    ApplicationName = engine.Info.Name,
+                    ApplicationVersion = engine.Info.Version.ToString(),
                     State = diagnostics.State.ToString(),
                     diagnostics.FrameNumber,
                     diagnostics.Uptime,
                     diagnostics.PluginCount,
                     diagnostics.CommandCount,
                     diagnostics.EventListenerCount,
-                    diagnostics.ActiveTimerCount
+                    diagnostics.ActiveTimerCount,
+                    ParameterCount = engine.Parameters.GetAll().Count,
+                    RuntimeLogCount = engine.Logs.GetRecent().Count,
+                    LocalTimestamp = DateTimeOffset.Now,
+                    ProcessId = Environment.ProcessId,
+                    MachineName = Environment.MachineName,
+                    OSDescription = RuntimeInformation.OSDescription,
+                    WorkingDirectory = Environment.CurrentDirectory
                 });
             });
 

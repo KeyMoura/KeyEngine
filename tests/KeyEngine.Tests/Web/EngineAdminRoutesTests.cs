@@ -31,7 +31,7 @@ public sealed class EngineAdminRoutesTests
     }
 
     [Fact]
-    public void StatusRoute_ReturnsPublicEngineDiagnostics()
+    public void StatusRoute_ReturnsSuccessWithCoreEngineCounts()
     {
         Engine engine = TestEngineFactory.Create();
         using HttpServer server = CreateServer();
@@ -46,6 +46,13 @@ public sealed class EngineAdminRoutesTests
             using JsonDocument json = JsonDocument.Parse(response.Body);
             JsonElement root = json.RootElement;
 
+            Assert.Equal(200, response.StatusCode);
+            Assert.Equal(
+                engine.Info.Name,
+                root.GetProperty("ApplicationName").GetString());
+            Assert.Equal(
+                engine.Info.Version.ToString(),
+                root.GetProperty("ApplicationVersion").GetString());
             Assert.Equal("Running", root.GetProperty("State").GetString());
             Assert.True(root.TryGetProperty("FrameNumber", out _));
             Assert.True(root.TryGetProperty("Uptime", out _));
@@ -53,6 +60,66 @@ public sealed class EngineAdminRoutesTests
             Assert.True(root.TryGetProperty("CommandCount", out _));
             Assert.True(root.TryGetProperty("EventListenerCount", out _));
             Assert.True(root.TryGetProperty("ActiveTimerCount", out _));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void StatusRoute_ReturnsParameterAndRuntimeLogCounts()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("feature.mode", "enabled");
+            engine.Logs.Add("Info", "Test log entry");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/status"));
+            using JsonDocument json = JsonDocument.Parse(response.Body);
+            JsonElement root = json.RootElement;
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Equal(1, root.GetProperty("ParameterCount").GetInt32());
+            Assert.Equal(
+                engine.Logs.GetRecent().Count,
+                root.GetProperty("RuntimeLogCount").GetInt32());
+            Assert.True(root.TryGetProperty("LocalTimestamp", out _));
+            Assert.True(root.TryGetProperty("ProcessId", out _));
+            Assert.True(root.TryGetProperty("MachineName", out _));
+            Assert.True(root.TryGetProperty("OSDescription", out _));
+            Assert.True(root.TryGetProperty("WorkingDirectory", out _));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void StatusRoute_DoesNotExposeAdminToken()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/status"));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.DoesNotContain("admin.token", response.Body);
+            Assert.DoesNotContain("secret", response.Body);
         }
         finally
         {
