@@ -40,6 +40,48 @@ public sealed class HttpServerTests
         Assert.Contains("GET /health", exception.Message);
     }
 
+    [Fact]
+    public void ParameterizedRoute_CapturesPathSegment()
+    {
+        using HttpServer server = CreateServer();
+        string? captured = null;
+        server.MapGet(
+            "/api/parameters/{key}",
+            (request, response) =>
+            {
+                captured = request.RouteValues["key"];
+                response.Body = "matched";
+            });
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext(
+                "GET",
+                "/api/parameters/server.port"));
+
+        Assert.Equal(200, response.StatusCode);
+        Assert.Equal("matched", response.Body);
+        Assert.Equal("server.port", captured);
+    }
+
+    [Fact]
+    public void ExactRoute_WinsOverParameterizedRoute()
+    {
+        using HttpServer server = CreateServer();
+        server.MapGet(
+            "/api/parameters/{key}",
+            (_, response) => response.Body = "parameter");
+        server.MapGet(
+            "/api/parameters/all",
+            (_, response) => response.Body = "exact");
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext(
+                "GET",
+                "/api/parameters/all"));
+
+        Assert.Equal("exact", response.Body);
+    }
+
     [Theory]
     [InlineData("POST", "/health")]
     [InlineData("GET", "/Health")]

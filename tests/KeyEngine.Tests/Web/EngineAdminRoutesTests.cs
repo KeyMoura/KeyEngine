@@ -204,6 +204,102 @@ public sealed class EngineAdminRoutesTests
         }
     }
 
+    [Fact]
+    public void ParameterRoute_ReturnsSingleParameterOrNotFound()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("server.port", 5000);
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext found = server.Dispatch(
+                new HttpRequestContext(
+                    "GET",
+                    "/api/parameters/server.port"));
+            HttpResponseContext missing = server.Dispatch(
+                new HttpRequestContext(
+                    "GET",
+                    "/api/parameters/missing"));
+            using JsonDocument json = JsonDocument.Parse(found.Body);
+
+            Assert.Equal(200, found.StatusCode);
+            Assert.Equal(
+                "server.port",
+                json.RootElement.GetProperty("Key").GetString());
+            Assert.Equal(5000, json.RootElement.GetProperty("Value").GetInt32());
+            Assert.Equal(404, missing.StatusCode);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParameterDelete_RemovesParameterOrReturnsNotFound()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("server.port", 5000);
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext removed = server.Dispatch(
+                new HttpRequestContext(
+                    "DELETE",
+                    "/api/parameters/server.port"));
+            HttpResponseContext missing = server.Dispatch(
+                new HttpRequestContext(
+                    "DELETE",
+                    "/api/parameters/server.port"));
+
+            Assert.Equal(200, removed.StatusCode);
+            Assert.False(engine.Parameters.Contains("server.port"));
+            Assert.Equal(404, missing.StatusCode);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParameterDelete_ReadOnlyParameter_ReturnsConflict()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set(
+                "server.port",
+                5000,
+                isReadOnly: true);
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext(
+                    "DELETE",
+                    "/api/parameters/server.port"));
+
+            Assert.Equal(409, response.StatusCode);
+            Assert.Contains("read-only", response.Body);
+            Assert.True(engine.Parameters.Contains("server.port"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
     private static HttpServer CreateServer()
     {
         return new HttpServer("http://127.0.0.1:8080/");

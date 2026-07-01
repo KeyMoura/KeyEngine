@@ -64,15 +64,16 @@ public static class EngineAdminRoutes
         server.MapGet(
             "/api/parameters",
             (_, response) => response.Body = engine.Serializer.Serialize(
-                engine.Parameters.GetAll().Select(parameter => new
-                {
-                    parameter.Key,
-                    parameter.Value,
-                    ValueType = parameter.ValueType.FullName,
-                    parameter.Description,
-                    parameter.Category,
-                    parameter.IsReadOnly
-                }).ToArray()));
+                engine.Parameters.GetAll()
+                    .Select(CreateParameterResponse)
+                    .ToArray()));
+
+        server.MapGet(
+            "/api/parameters/{key}",
+            (request, response) => GetParameter(
+                engine,
+                request,
+                response));
 
         server.MapPost(
             "/api/parameters",
@@ -80,6 +81,76 @@ public static class EngineAdminRoutes
                 engine,
                 request,
                 response));
+
+        server.Map(
+            "DELETE",
+            "/api/parameters/{key}",
+            (request, response) => DeleteParameter(
+                engine,
+                request,
+                response));
+    }
+
+    private static void GetParameter(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        string key = request.RouteValues["key"];
+        Parameter? parameter = engine.Parameters
+            .GetAll()
+            .FirstOrDefault(candidate =>
+                StringComparer.Ordinal.Equals(
+                    candidate.Key,
+                    key));
+
+        if (parameter is null)
+        {
+            WriteError(
+                engine,
+                response,
+                404,
+                $"Parameter '{key}' was not found.");
+            return;
+        }
+
+        response.Body = engine.Serializer.Serialize(
+            CreateParameterResponse(parameter));
+    }
+
+    private static void DeleteParameter(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        string key = request.RouteValues["key"];
+
+        try
+        {
+            if (!engine.Parameters.Remove(key))
+            {
+                WriteError(
+                    engine,
+                    response,
+                    404,
+                    $"Parameter '{key}' was not found.");
+                return;
+            }
+
+            response.Body = engine.Serializer.Serialize(new
+            {
+                Key = key,
+                Removed = true
+            });
+        }
+        catch (InvalidOperationException exception)
+        {
+            WriteError(
+                engine,
+                response,
+                409,
+                exception.Message);
+        }
     }
 
     private static void SetParameter(
@@ -224,11 +295,40 @@ public static class EngineAdminRoutes
         });
     }
 
+    private static ParameterResponse CreateParameterResponse(
+        Parameter parameter)
+    {
+        return new ParameterResponse
+        {
+            Key = parameter.Key,
+            Value = parameter.Value,
+            ValueType = parameter.ValueType.FullName,
+            Description = parameter.Description,
+            Category = parameter.Category,
+            IsReadOnly = parameter.IsReadOnly
+        };
+    }
+
     private sealed class ParameterWriteRequest
     {
         public string? Key { get; init; }
 
         public JsonElement Value { get; init; }
+
+        public string? Description { get; init; }
+
+        public string? Category { get; init; }
+
+        public bool IsReadOnly { get; init; }
+    }
+
+    private sealed class ParameterResponse
+    {
+        public required string Key { get; init; }
+
+        public object? Value { get; init; }
+
+        public string? ValueType { get; init; }
 
         public string? Description { get; init; }
 

@@ -18,6 +18,7 @@ public sealed class HttpServer
     private readonly HttpListener _listener = new();
     private readonly Dictionary<(string Method, string Path), RouteHandler>
         _routes = [];
+    private readonly List<ParameterizedRoute> _parameterizedRoutes = [];
 
     private CancellationTokenSource? _cancellation;
     private Task? _listenTask;
@@ -150,8 +151,33 @@ public sealed class HttpServer
                 nameof(path));
         }
 
+        string normalizedMethod = method.ToUpperInvariant();
+        RouteSegment[] segments = ParseRouteSegments(
+            path,
+            out bool isParameterized);
+
+        if (isParameterized)
+        {
+            if (_parameterizedRoutes.Any(route =>
+                    route.Method == normalizedMethod &&
+                    route.Path == path))
+            {
+                throw new InvalidOperationException(
+                    $"The route '{normalizedMethod} {path}' is already registered.");
+            }
+
+            _parameterizedRoutes.Add(new ParameterizedRoute
+            {
+                Method = normalizedMethod,
+                Path = path,
+                Segments = segments,
+                Handler = handler
+            });
+            return;
+        }
+
         (string Method, string Path) route =
-            (method.ToUpperInvariant(), path);
+            (normalizedMethod, path);
 
         if (!_routes.TryAdd(
                 route,
@@ -257,19 +283,35 @@ public sealed class HttpServer
 
         HttpResponseContext response = new();
 
-        if (!_routes.TryGetValue(
+        if (_routes.TryGetValue(
                 (request.Method, request.Path),
-                out RouteHandler? handler))
+                out RouteHandler? exactHandler))
         {
-            response.StatusCode = 404;
-            response.Body = "Not Found";
+            exactHandler(
+                request,
+                response);
             return response;
         }
 
-        handler(
-            request,
-            response);
+        foreach (ParameterizedRoute route in _parameterizedRoutes)
+        {
+            if (route.Method != request.Method ||
+                !TryMatch(
+                    route,
+                    request.Path,
+                    out IReadOnlyDictionary<string, string>? routeValues))
+            {
+                continue;
+            }
 
+            route.Handler(
+                request.WithRouteValues(routeValues),
+                response);
+            return response;
+        }
+
+        response.StatusCode = 404;
+        response.Body = "Not Found";
         return response;
     }
 
@@ -376,6 +418,107 @@ public sealed class HttpServer
         return result;
     }
 
+    private static RouteSegment[] ParseRouteSegments(
+        string path,
+        out bool isParameterized)
+    {
+        string[] values = SplitPath(path);
+        RouteSegment[] segments = new RouteSegment[values.Length];
+        HashSet<string> parameterNames = new(StringComparer.Ordinal);
+        isParameterized = false;
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            string value = values[i];
+            bool containsBrace = value.Contains('{') || value.Contains('}');
+
+            if (!containsBrace)
+            {
+                segments[i] = new RouteSegment(value, false);
+                continue;
+            }
+
+            if (value.Length < 3 ||
+                value[0] != '{' ||
+                value[^1] != '}' ||
+                value[1..^1].Contains('{') ||
+                value[1..^1].Contains('}'))
+            {
+                throw new ArgumentException(
+                    $"Route segment '{value}' is not a valid parameter.",
+                    nameof(path));
+            }
+
+            string name = value[1..^1];
+
+            if (!parameterNames.Add(name))
+            {
+                throw new ArgumentException(
+                    $"Route parameter '{name}' is duplicated.",
+                    nameof(path));
+            }
+
+            segments[i] = new RouteSegment(name, true);
+            isParameterized = true;
+        }
+
+        return segments;
+    }
+
+    private static bool TryMatch(
+        ParameterizedRoute route,
+        string path,
+        out IReadOnlyDictionary<string, string> routeValues)
+    {
+        string[] values = SplitPath(path);
+        Dictionary<string, string> captured =
+            new(StringComparer.Ordinal);
+
+        if (values.Length != route.Segments.Length)
+        {
+            routeValues = captured;
+            return false;
+        }
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            RouteSegment segment = route.Segments[i];
+            string value = values[i];
+
+            if (segment.IsParameter)
+            {
+                if (value.Length == 0)
+                {
+                    routeValues = captured;
+                    return false;
+                }
+
+                captured.Add(
+                    segment.Value,
+                    Uri.UnescapeDataString(value));
+                continue;
+            }
+
+            if (!StringComparer.Ordinal.Equals(
+                    segment.Value,
+                    value))
+            {
+                routeValues = captured;
+                return false;
+            }
+        }
+
+        routeValues = captured;
+        return true;
+    }
+
+    private static string[] SplitPath(string path)
+    {
+        return path[1..].Split(
+            '/',
+            StringSplitOptions.None);
+    }
+
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(
@@ -401,4 +544,19 @@ public sealed class HttpServer
                 nameof(prefix));
         }
     }
+
+    private sealed class ParameterizedRoute
+    {
+        public required string Method { get; init; }
+
+        public required string Path { get; init; }
+
+        public required RouteSegment[] Segments { get; init; }
+
+        public required RouteHandler Handler { get; init; }
+    }
+
+    private readonly record struct RouteSegment(
+        string Value,
+        bool IsParameter);
 }

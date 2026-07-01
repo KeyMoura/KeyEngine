@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace KeyEngine.Web;
 
 /// <summary>
@@ -30,12 +32,18 @@ public sealed class HttpRequestContext
     /// </summary>
     public string Body { get; }
 
+    /// <summary>
+    /// Gets values captured from parameterized route segments.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> RouteValues { get; }
+
     internal HttpRequestContext(
         string method,
         string path,
         IReadOnlyDictionary<string, string>? query = null,
         IReadOnlyDictionary<string, string>? headers = null,
-        string body = "")
+        string body = "",
+        IReadOnlyDictionary<string, string>? routeValues = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(method);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -45,5 +53,23 @@ public sealed class HttpRequestContext
         Query = query ?? new Dictionary<string, string>();
         Headers = headers ?? new Dictionary<string, string>();
         Body = body ?? string.Empty;
+        RouteValues = new ReadOnlyDictionary<string, string>(
+            routeValues is null
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : new Dictionary<string, string>(
+                    routeValues,
+                    StringComparer.Ordinal));
+    }
+
+    internal HttpRequestContext WithRouteValues(
+        IReadOnlyDictionary<string, string> routeValues)
+    {
+        return new HttpRequestContext(
+            Method,
+            Path,
+            Query,
+            Headers,
+            Body,
+            routeValues);
     }
 }
