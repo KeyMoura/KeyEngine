@@ -10,4 +10,8 @@
     <InternalsVisibleTo Include="KeyEngine.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\KeyEngine.csproj" />
+  </ItemGroup>
+
 </Project>
