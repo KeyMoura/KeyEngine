@@ -24,6 +24,7 @@ internal sealed class MainWindow
     private readonly TextBox _parameterValueTextBox;
     private readonly TextBox _parameterDescriptionTextBox;
     private readonly TextBox _parameterCategoryTextBox;
+    private readonly TextBox _parameterPersistencePathTextBox;
 
     public MainWindow(
         Uri serverUri,
@@ -50,6 +51,7 @@ internal sealed class MainWindow
         _parameterValueTextBox = CreateInput("Parameter value");
         _parameterDescriptionTextBox = CreateInput("Description (optional)");
         _parameterCategoryTextBox = CreateInput("Category (optional)");
+        _parameterPersistencePathTextBox = CreateInput("Parameter file path");
         _detailText = new TextBlock
         {
             Text = "Select Refresh to query the server.",
@@ -124,6 +126,19 @@ internal sealed class MainWindow
         parameterButtons.Children.Add(CreateButton("Refresh parameters", ShowParametersAsync));
         root.Children.Add(parameterButtons);
 
+        root.Children.Add(new TextBlock
+        {
+            Text = "Parameter persistence",
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold
+        });
+        root.Children.Add(_parameterPersistencePathTextBox);
+
+        WrapPanel persistenceButtons = new();
+        persistenceButtons.Children.Add(CreateButton("Save parameters", SaveParametersAsync));
+        persistenceButtons.Children.Add(CreateButton("Load parameters", LoadParametersAsync));
+        root.Children.Add(persistenceButtons);
+
         root.Children.Add(new Border
         {
             BorderBrush = Brushes.Gray,
@@ -152,12 +167,7 @@ internal sealed class MainWindow
                 throw new HttpRequestException("The server returned no status data.");
             }
 
-            _connectionText.Text = "Connected";
-            _applicationText.Text = $"{status.ApplicationName} {status.ApplicationVersion}".Trim();
-            _engineStateText.Text = status.State ?? "Unknown";
-            _pluginCountText.Text = status.PluginCount.ToString();
-            _parameterCountText.Text = status.ParameterCount.ToString();
-            _logCountText.Text = status.RuntimeLogCount.ToString();
+            UpdateStatus(status);
             _detailText.Text = "Server status refreshed.";
         });
     }
@@ -181,12 +191,7 @@ internal sealed class MainWindow
         await RunRequestAsync(async () =>
         {
             IReadOnlyList<AdminParameter> parameters = await _client.GetParametersAsync();
-            _detailText.Text = parameters.Count == 0
-                ? "No parameters reported."
-                : $"Parameters ({parameters.Count}){Environment.NewLine}{Environment.NewLine}" +
-                  string.Join(
-                      Environment.NewLine,
-                      parameters.Select(FormatParameter));
+            _detailText.Text = FormatParameterList(parameters);
         });
     }
 
@@ -278,6 +283,51 @@ internal sealed class MainWindow
         });
     }
 
+    private async Task SaveParametersAsync()
+    {
+        string path = _parameterPersistencePathTextBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            _detailText.Text = "A parameter file path is required.";
+            return;
+        }
+
+        await RunRequestAsync(async () =>
+        {
+            await _client.SaveParametersAsync(path);
+            _detailText.Text = $"Parameters were saved successfully to '{path}'.";
+        });
+    }
+
+    private async Task LoadParametersAsync()
+    {
+        string path = _parameterPersistencePathTextBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            _detailText.Text = "A parameter file path is required.";
+            return;
+        }
+
+        await RunRequestAsync(async () =>
+        {
+            await _client.LoadParametersAsync(path);
+
+            AdminStatus? status = await _client.GetStatusAsync();
+            if (status is null)
+            {
+                throw new HttpRequestException("The server returned no status data.");
+            }
+
+            IReadOnlyList<AdminParameter> parameters = await _client.GetParametersAsync();
+            UpdateStatus(status);
+            _detailText.Text =
+                $"Parameters were loaded successfully from '{path}'." +
+                Environment.NewLine +
+                Environment.NewLine +
+                FormatParameterList(parameters);
+        });
+    }
+
     private async Task RunRequestAsync(Func<Task> request)
     {
         try
@@ -361,6 +411,26 @@ internal sealed class MainWindow
         return string.IsNullOrWhiteSpace(value)
             ? null
             : value.Trim();
+    }
+
+    private void UpdateStatus(AdminStatus status)
+    {
+        _connectionText.Text = "Connected";
+        _applicationText.Text = $"{status.ApplicationName} {status.ApplicationVersion}".Trim();
+        _engineStateText.Text = status.State ?? "Unknown";
+        _pluginCountText.Text = status.PluginCount.ToString();
+        _parameterCountText.Text = status.ParameterCount.ToString();
+        _logCountText.Text = status.RuntimeLogCount.ToString();
+    }
+
+    private static string FormatParameterList(IReadOnlyList<AdminParameter> parameters)
+    {
+        return parameters.Count == 0
+            ? "No parameters reported."
+            : $"Parameters ({parameters.Count}){Environment.NewLine}{Environment.NewLine}" +
+              string.Join(
+                  Environment.NewLine,
+                  parameters.Select(FormatParameter));
     }
 
     private static string FormatPlugin(AdminPlugin plugin)
