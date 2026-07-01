@@ -6,6 +6,7 @@ namespace KeyEngine.AdminApp;
 /// Minimal client for the KeyEngine.Web admin API.
 /// </summary>
 public sealed class AdminApiClient
+    : IAdminApiClient
 {
     private readonly HttpClient _httpClient;
 
