@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\KeyEngine.csproj" />
     <ProjectReference Include="..\..\KeyEngine.Web\KeyEngine.Web.csproj" />
     <ProjectReference Include="..\..\..\TestPlugin\KeyEngine.TestPlugin.csproj" />
+    <ProjectReference Include="..\..\..\TestApp\KeyEngine.TestApp.csproj" />
   </ItemGroup>
 
 </Project>
