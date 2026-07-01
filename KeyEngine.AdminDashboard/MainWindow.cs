@@ -18,6 +18,8 @@ internal sealed class MainWindow
     private readonly TextBlock _parameterCountText;
     private readonly TextBlock _logCountText;
     private readonly TextBlock _detailText;
+    private readonly TextBlock _adminTokenStatusText;
+    private readonly TextBox _adminTokenTextBox;
     private readonly TextBox _parameterKeyTextBox;
     private readonly TextBox _parameterValueTextBox;
     private readonly TextBox _parameterDescriptionTextBox;
@@ -41,6 +43,9 @@ internal sealed class MainWindow
         _pluginCountText = CreateValue("-");
         _parameterCountText = CreateValue("-");
         _logCountText = CreateValue("-");
+        _adminTokenStatusText = CreateValue("Not set");
+        _adminTokenTextBox = CreateInput("Admin token");
+        _adminTokenTextBox.PasswordChar = '*';
         _parameterKeyTextBox = CreateInput("Parameter key");
         _parameterValueTextBox = CreateInput("Parameter value");
         _parameterDescriptionTextBox = CreateInput("Description (optional)");
@@ -51,7 +56,11 @@ internal sealed class MainWindow
             TextWrapping = TextWrapping.Wrap
         };
 
-        Content = CreateLayout(serverUri);
+        Content = new ScrollViewer
+        {
+            Content = CreateLayout(serverUri),
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+        };
         Opened += async (_, _) => await RefreshStatusAsync();
     }
 
@@ -87,6 +96,16 @@ internal sealed class MainWindow
         buttons.Children.Add(CreateButton("View logs", ShowLogsAsync));
         buttons.Children.Add(CreateButton("View routes", ShowRoutesAsync));
         root.Children.Add(buttons);
+
+        root.Children.Add(new TextBlock
+        {
+            Text = "Admin token",
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold
+        });
+        root.Children.Add(CreateRow("Token status", _adminTokenStatusText));
+        root.Children.Add(_adminTokenTextBox);
+        root.Children.Add(CreateButton("Apply token", ApplyAdminTokenAsync));
 
         root.Children.Add(new TextBlock
         {
@@ -223,6 +242,26 @@ internal sealed class MainWindow
         });
     }
 
+    private Task ApplyAdminTokenAsync()
+    {
+        string? token = NullIfWhiteSpace(_adminTokenTextBox.Text);
+        _client.AdminToken = token;
+        _adminTokenTextBox.Text = string.Empty;
+
+        if (token is null)
+        {
+            _adminTokenStatusText.Text = "Not set";
+            _detailText.Text = "Admin token cleared.";
+        }
+        else
+        {
+            _adminTokenStatusText.Text = "Set for this session";
+            _detailText.Text = "Admin token set for protected actions.";
+        }
+
+        return Task.CompletedTask;
+    }
+
     private async Task DeleteParameterAsync()
     {
         string key = _parameterKeyTextBox.Text?.Trim() ?? string.Empty;
@@ -250,7 +289,7 @@ internal sealed class MainWindow
             System.Net.HttpStatusCode.Forbidden)
         {
             _detailText.Text =
-                "This action requires a valid admin token. Token configuration is not available in the dashboard yet.";
+                "Admin token required or invalid. Enter the configured token and select Apply token.";
         }
         catch (Exception exception) when (
             exception is HttpRequestException or TaskCanceledException or JsonException)
