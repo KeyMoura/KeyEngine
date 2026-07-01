@@ -55,7 +55,8 @@ contexts provide manifest information and plugin-specific configuration, data,
 cache, and log locations.
 
 Plugin loading currently occurs for the lifetime of the process. Hot reload,
-unloading, and dependency ordering are not implemented.
+unloading, and version constraints are not implemented. Required dependencies
+and optional load-order hints are validated and sorted during loading.
 
 ## System discovery
 
@@ -108,6 +109,15 @@ Commands and events currently use synchronous dispatch.
   default implementation uses indented JSON.
 - **Networking:** manages synchronous TCP clients, servers, and connections
   using built-in .NET socket APIs.
+- **Parameters:** stores typed runtime settings, publishes change events, and
+  can explicitly save or replace them from a JSON file. Hosts decide whether
+  and when persistence occurs.
+- **Runtime logs:** retain a bounded in-memory activity feed without replacing
+  the existing console logging path.
+- **Web:** provides a small synchronous HTTP server with route registration,
+  simple path parameters, route metadata, and static-file fallback. Explicit
+  API routes take precedence, and canonical path checks confine files to their
+  configured static root.
 - **Input:** aggregates snapshot state from application-provided keyboard and
   pointer sources once per frame without depending on a windowing platform.
 - **Numerics:** contains vector types, interpolation helpers, and two-dimensional
@@ -123,6 +133,26 @@ without exposing `PluginManager` to consumers such as the Console plugin.
 
 Diagnostics should remain derived from subsystem state. KeyEngine should avoid
 creating a second mutable diagnostics registry that can drift from the runtime.
+
+## Admin clients and sample server
+
+The sample server composes `KeyEngine.Web` with engine diagnostics, parameters,
+serialization, and runtime logs. Its admin API exposes read-only runtime data
+and protects mutation routes with an optional `X-KeyEngine-Admin-Token` value
+from `admin.token`. This is a local/development foundation, not a complete
+authentication or authorization system.
+
+`KeyEngine.AdminClient` contains reusable HTTP DTOs and client operations and
+does not reference server internals. `KeyEngine.AdminApp` is a console shell,
+while `KeyEngine.AdminDashboard` is an early Avalonia desktop shell. Both use
+AdminClient as the API boundary. The dashboard can inspect status, plugins,
+parameters, logs, and routes; mutate and persist parameters; clear logs; and
+configure the sample static website root. Tokens and server URLs are not
+persisted by the dashboard.
+
+TestApp optionally loads `parameters.json` beside its executable before engine
+initialization. This allows startup-only sample settings such as
+`web.static.root` and `admin.token` to survive restarts when explicitly saved.
 
 ## Optional extensions
 
@@ -149,10 +179,10 @@ Rendering, Physics, and game-specific systems remain outside the core package.
 
 ## Testing
 
-The initial xUnit contract suite exercises engine lifecycle transitions, event
-cancellation, resource location validation, resource dispatch and caching,
-multi-source input behavior, and timer completion cleanup. It is a focused
-alpha baseline rather than comprehensive production-readiness coverage.
+The xUnit contract suite exercises lifecycle transitions, event cancellation,
+resources, input, timers, plugin ordering and diagnostics, parameters,
+web/admin routes, static-file confinement, and sample startup loading. It is a
+focused alpha baseline rather than comprehensive production-readiness coverage.
 
 ## Design principles
 

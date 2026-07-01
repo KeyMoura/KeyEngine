@@ -16,6 +16,10 @@ The v0.1 alpha foundation includes:
 - Configuration and JSON serialization
 - Typed resources and loader dispatch
 - Synchronous TCP networking
+- Runtime parameters with JSON file persistence
+- Simple HTTP routing and static file hosting through KeyEngine.Web
+- Admin API status, diagnostics, parameter, log, and route endpoints
+- Reusable AdminClient, console admin shell, and early Avalonia dashboard
 - Provider-neutral input state
 - Numerics and drawing foundations
 - Engine and plugin diagnostics
@@ -29,10 +33,10 @@ KeyEngine is an early alpha under active development. APIs and runtime
 contracts may change before 1.0, and the framework should not yet be considered
 production-ready.
 
-The initial xUnit contract suite covers core lifecycle transitions, event
-cancellation, resource dispatch and caching, multi-source input behavior, and
-timer cleanup. Coverage is intentionally focused and will expand with stable
-contracts.
+The xUnit contract suite covers core lifecycle transitions, event cancellation,
+resource dispatch and caching, multi-source input behavior, timer cleanup,
+plugin ordering, parameters, web/admin routes, and static file security.
+Coverage remains an alpha baseline and is not comprehensive.
 
 ## License
 

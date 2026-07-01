@@ -33,8 +33,19 @@ The repository currently contains initial implementations of:
 - Engine and per-plugin diagnostics.
 - Basic numerics, graph interpolation, color values, and ANSI color translation.
 - A separate Console plugin with engine and plugin diagnostic commands.
+- Runtime parameters, change events, and JSON file persistence.
+- A small HTTP server with exact and parameterized routes, route discovery,
+  static file hosting, and path traversal protection.
+- A development/admin API for runtime status, plugins, parameters, logs, and
+  route metadata. Mutation routes support a minimal admin token check.
+- `KeyEngine.AdminClient` as the reusable HTTP API boundary.
+- `KeyEngine.AdminApp` as an interactive console admin shell.
+- `KeyEngine.AdminDashboard` as an early Avalonia desktop client for viewing
+  runtime data, editing and persisting parameters, configuring the sample
+  static root, and supplying an in-memory admin token.
+- A bounded in-memory runtime activity log exposed through the admin API.
 - An initial xUnit contract suite covering lifecycle, event cancellation,
-  resources, input aggregation, and timer cleanup.
+  resources, input aggregation, timers, plugins, parameters, and web behavior.
 
 These are foundations, not a declaration that every subsystem is feature
 complete or API-stable.
@@ -60,7 +71,10 @@ The following areas are planned directions and are not currently implemented:
 
 - Asynchronous resource loading and provider-specific resource sources.
 - Resource lifetime policies and hot reloading.
-- Plugin dependency ordering and optional assembly isolation.
+- Plugin assembly isolation and version constraints beyond current dependency
+  and ordering-hint support.
+- Production hardening for the HTTP/admin foundations, including an intentional
+  authentication and transport-security design.
 - Structured logging integration suitable for non-console hosts.
 - Deterministic time sources and expanded scheduling policies.
 - Broader rendering-neutral drawing primitives, if required by real consumers.
