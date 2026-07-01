@@ -44,6 +44,7 @@ public sealed class Engine
     private readonly TimerManager _timerManager;
     private readonly ResourceManager _resourceManager;
     private readonly ISerializer _serializer;
+    private readonly IFileSystem _fileSystem;
     private readonly NetworkManager _networkManager;
     private readonly InputManager _inputManager;
     private readonly ParameterManager _parameterManager;
@@ -137,11 +138,16 @@ public sealed class Engine
 
         _serializer = new JsonSerializerAdapter();
 
+        _fileSystem = new PhysicalFileSystem();
+
         _networkManager = new NetworkManager();
 
         _inputManager = new InputManager();
 
-        _parameterManager = new ParameterManager(_eventBus);
+        _parameterManager = new ParameterManager(
+            _eventBus,
+            _fileSystem,
+            _serializer);
 
         Diagnostics = new EngineDiagnostics(this);
 
@@ -153,10 +159,10 @@ public sealed class Engine
         _services.AddSingleton(_timerManager);
         _services.AddSingleton(_resourceManager);
         _services.AddSingleton(_serializer);
+        _services.AddSingleton<IFileSystem>(_fileSystem);
         _services.AddSingleton(_networkManager);
         _services.AddSingleton(_inputManager);
         _services.AddSingleton(_parameterManager);
-        _services.AddSingleton<IFileSystem, PhysicalFileSystem>();
     }
 
     /// <summary>

@@ -148,6 +148,180 @@ public sealed class ParameterManagerTests
             engine.Shutdown();
         }
     }
+
+    [Fact]
+    public void SaveAndLoad_StringParameter_RoundTrips()
+    {
+        string path = CreateTemporaryPath();
+
+        try
+        {
+            ParameterManager saved = TestEngineFactory.Create().Parameters;
+            saved.Set("server.name", "KeyEngine");
+
+            saved.Save(path);
+
+            ParameterManager loaded = TestEngineFactory.Create().Parameters;
+            loaded.Load(path);
+
+            Assert.Equal("KeyEngine", loaded.Get<string>("server.name"));
+        }
+        finally
+        {
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void SaveAndLoad_IntParameter_RoundTrips()
+    {
+        string path = CreateTemporaryPath();
+
+        try
+        {
+            ParameterManager saved = TestEngineFactory.Create().Parameters;
+            saved.Set("server.port", 5000);
+
+            saved.Save(path);
+
+            ParameterManager loaded = TestEngineFactory.Create().Parameters;
+            loaded.Load(path);
+
+            Assert.Equal(5000, loaded.Get<int>("server.port"));
+        }
+        finally
+        {
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void SaveAndLoad_DoubleParameter_RoundTrips()
+    {
+        string path = CreateTemporaryPath();
+
+        try
+        {
+            ParameterManager saved = TestEngineFactory.Create().Parameters;
+            saved.Set("scheduler.scale", 1.5d);
+
+            saved.Save(path);
+
+            ParameterManager loaded = TestEngineFactory.Create().Parameters;
+            loaded.Load(path);
+
+            Assert.Equal(1.5d, loaded.Get<double>("scheduler.scale"));
+        }
+        finally
+        {
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void SaveAndLoad_BoolParameter_RoundTrips()
+    {
+        string path = CreateTemporaryPath();
+
+        try
+        {
+            ParameterManager saved = TestEngineFactory.Create().Parameters;
+            saved.Set("auth.requireVerification", true);
+
+            saved.Save(path);
+
+            ParameterManager loaded = TestEngineFactory.Create().Parameters;
+            loaded.Load(path);
+
+            Assert.True(loaded.Get<bool>("auth.requireVerification"));
+        }
+        finally
+        {
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void SaveAndLoad_MetadataAndReadOnlyFlag_ArePreserved()
+    {
+        string path = CreateTemporaryPath();
+
+        try
+        {
+            ParameterManager saved = TestEngineFactory.Create().Parameters;
+            saved.Set(
+                "server.port",
+                5000,
+                "HTTP port",
+                "Server",
+                isReadOnly: true);
+
+            saved.Save(path);
+
+            ParameterManager loaded = TestEngineFactory.Create().Parameters;
+            loaded.Load(path);
+
+            Parameter parameter = Assert.Single(loaded.GetAll());
+            Assert.Equal("HTTP port", parameter.Description);
+            Assert.Equal("Server", parameter.Category);
+            Assert.True(parameter.IsReadOnly);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                loaded.Set("server.port", 6000));
+        }
+        finally
+        {
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void Save_UnsupportedValueType_ThrowsNotSupportedException()
+    {
+        string path = CreateTemporaryPath();
+
+        try
+        {
+            ParameterManager parameters = TestEngineFactory.Create().Parameters;
+            parameters.Set("server.tags", new[] { "alpha" });
+
+            NotSupportedException exception = Assert.Throws<NotSupportedException>(
+                () => parameters.Save(path));
+
+            Assert.Contains("not supported", exception.Message);
+        }
+        finally
+        {
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void SaveAndLoad_BlankPath_ThrowsArgumentException()
+    {
+        ParameterManager parameters = TestEngineFactory.Create().Parameters;
+
+        Assert.Throws<ArgumentException>(() =>
+            parameters.Save(" "));
+
+        Assert.Throws<ArgumentException>(() =>
+            parameters.Load(" "));
+    }
+
+    private static string CreateTemporaryPath()
+    {
+        return Path.Combine(
+            Path.GetTempPath(),
+            $"{Guid.NewGuid():N}.parameters.json");
+    }
+
+    private static void DeleteTemporaryPath(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
 }
 
 internal sealed class ParameterChangedListener
