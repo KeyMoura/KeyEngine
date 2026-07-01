@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\KeyEngine.csproj" />
+    <ProjectReference Include="..\..\KeyEngine.Web\KeyEngine.Web.csproj" />
   </ItemGroup>
 
 </Project>
