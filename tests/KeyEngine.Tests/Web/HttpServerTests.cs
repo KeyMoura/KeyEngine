@@ -110,6 +110,22 @@ public sealed class HttpServerTests
     }
 
     [Fact]
+    public void Constructor_MultiplePrefixes_PreservesEveryPrefix()
+    {
+        using HttpServer server = new(
+            "http://localhost:5000/",
+            "http://127.0.0.1:5000/");
+
+        Assert.Equal("http://localhost:5000/", server.Prefix);
+        Assert.Equal(
+            [
+                "http://localhost:5000/",
+                "http://127.0.0.1:5000/"
+            ],
+            server.Prefixes);
+    }
+
+    [Fact]
     public void PluginRegisteredServer_IsInjectedIntoSystemForRouteRegistration()
     {
         using HttpServer server = CreateServer();

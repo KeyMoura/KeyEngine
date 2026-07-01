@@ -24,9 +24,17 @@ public sealed class HttpServer
     private bool _isDisposed;
 
     /// <summary>
-    /// Gets the HTTP listener prefix.
+    /// Gets the first HTTP listener prefix.
     /// </summary>
-    public string Prefix { get; }
+    /// <remarks>
+    /// Use <see cref="Prefixes"/> to inspect every configured prefix.
+    /// </remarks>
+    public string Prefix => Prefixes[0];
+
+    /// <summary>
+    /// Gets all HTTP listener prefixes.
+    /// </summary>
+    public IReadOnlyList<string> Prefixes { get; }
 
     /// <summary>
     /// Gets a value indicating whether the server is listening.
@@ -36,33 +44,43 @@ public sealed class HttpServer
     /// <summary>
     /// Initializes a new HTTP server.
     /// </summary>
-    /// <param name="prefix">
-    /// An absolute HTTP listener prefix ending with a slash, such as
-    /// <c>http://127.0.0.1:8080/</c>.
+    /// <param name="prefixes">
+    /// One or more absolute HTTP listener prefixes ending with a slash, such
+    /// as <c>http://127.0.0.1:8080/</c>.
     /// </param>
     /// <exception cref="ArgumentException">
-    /// Thrown when the prefix is not an absolute HTTP URI ending with a slash.
+    /// Thrown when no prefixes are supplied, a prefix is duplicated, or a
+    /// prefix is not an absolute HTTP URI ending with a slash.
     /// </exception>
-    public HttpServer(string prefix)
+    public HttpServer(params string[] prefixes)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+        ArgumentNullException.ThrowIfNull(prefixes);
 
-        if (!Uri.TryCreate(
-                prefix,
-                UriKind.Absolute,
-                out Uri? uri) ||
-            uri.Scheme != Uri.UriSchemeHttp ||
-            !prefix.EndsWith(
-                "/",
-                StringComparison.Ordinal))
+        if (prefixes.Length == 0)
         {
             throw new ArgumentException(
-                "The server prefix must be an absolute HTTP URI ending with a slash.",
-                nameof(prefix));
+                "At least one server prefix is required.",
+                nameof(prefixes));
         }
 
-        Prefix = prefix;
-        _listener.Prefixes.Add(prefix);
+        HashSet<string> uniquePrefixes =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string prefix in prefixes)
+        {
+            ValidatePrefix(prefix);
+
+            if (!uniquePrefixes.Add(prefix))
+            {
+                throw new ArgumentException(
+                    $"The server prefix '{prefix}' is duplicated.",
+                    nameof(prefixes));
+            }
+
+            _listener.Prefixes.Add(prefix);
+        }
+
+        Prefixes = Array.AsReadOnly(prefixes.ToArray());
     }
 
     /// <summary>
@@ -345,5 +363,24 @@ public sealed class HttpServer
         ObjectDisposedException.ThrowIf(
             _isDisposed,
             this);
+    }
+
+    private static void ValidatePrefix(string prefix)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+
+        if (!Uri.TryCreate(
+                prefix,
+                UriKind.Absolute,
+                out Uri? uri) ||
+            uri.Scheme != Uri.UriSchemeHttp ||
+            !prefix.EndsWith(
+                "/",
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"The server prefix '{prefix}' must be an absolute HTTP URI ending with a slash.",
+                nameof(prefix));
+        }
     }
 }
