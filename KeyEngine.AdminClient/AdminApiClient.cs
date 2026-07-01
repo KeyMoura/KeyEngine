@@ -81,6 +81,22 @@ public sealed class AdminApiClient
         string value,
         CancellationToken cancellationToken = default)
     {
+        await SetParameterAsync(
+            key,
+            value,
+            null,
+            null,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task SetParameterAsync(
+        string key,
+        string value,
+        string? description,
+        string? category,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         using HttpRequestMessage request =
@@ -89,7 +105,9 @@ public sealed class AdminApiClient
                 "/api/parameters",
                 new ParameterWriteRequest(
                     key,
-                    value));
+                    value,
+                    description,
+                    category));
 
         await SendMutationAsync(
             request,

@@ -26,6 +26,14 @@ public interface IAdminApiClient
     /// <summary>Creates or updates a string runtime parameter.</summary>
     Task SetParameterAsync(string key, string value, CancellationToken cancellationToken = default);
 
+    /// <summary>Creates or updates a string runtime parameter with optional metadata.</summary>
+    Task SetParameterAsync(
+        string key,
+        string value,
+        string? description,
+        string? category,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Deletes a runtime parameter.</summary>
     Task DeleteParameterAsync(string key, CancellationToken cancellationToken = default);
 

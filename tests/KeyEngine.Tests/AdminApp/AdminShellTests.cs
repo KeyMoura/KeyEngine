@@ -318,6 +318,18 @@ public sealed class AdminShellTests
             return Task.CompletedTask;
         }
 
+        public Task SetParameterAsync(
+            string key,
+            string value,
+            string? description,
+            string? category,
+            CancellationToken cancellationToken = default)
+        {
+            SetParameterKey = key;
+            SetParameterValue = value;
+            return Task.CompletedTask;
+        }
+
         public Task DeleteParameterAsync(
             string key,
             CancellationToken cancellationToken = default)

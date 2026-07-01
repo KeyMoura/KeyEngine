@@ -91,7 +91,9 @@ public sealed class AdminApiClientTests
 
         await client.SetParameterAsync(
             "feature.mode",
-            "enabled");
+            "enabled",
+            "Feature mode",
+            "Features");
 
         using JsonDocument json = JsonDocument.Parse(handler.RequestBody!);
         Assert.Equal(HttpMethod.Post, handler.RequestMethod);
@@ -99,6 +101,8 @@ public sealed class AdminApiClientTests
         Assert.Equal("secret", handler.AdminToken);
         Assert.Equal("feature.mode", json.RootElement.GetProperty("Key").GetString());
         Assert.Equal("enabled", json.RootElement.GetProperty("Value").GetString());
+        Assert.Equal("Feature mode", json.RootElement.GetProperty("Description").GetString());
+        Assert.Equal("Features", json.RootElement.GetProperty("Category").GetString());
     }
 
     [Fact]

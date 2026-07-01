@@ -18,6 +18,10 @@ internal sealed class MainWindow
     private readonly TextBlock _parameterCountText;
     private readonly TextBlock _logCountText;
     private readonly TextBlock _detailText;
+    private readonly TextBox _parameterKeyTextBox;
+    private readonly TextBox _parameterValueTextBox;
+    private readonly TextBox _parameterDescriptionTextBox;
+    private readonly TextBox _parameterCategoryTextBox;
 
     public MainWindow(
         Uri serverUri,
@@ -27,7 +31,7 @@ internal sealed class MainWindow
 
         Title = "KeyEngine Admin Dashboard";
         Width = 820;
-        Height = 560;
+        Height = 700;
         MinWidth = 640;
         MinHeight = 420;
 
@@ -37,6 +41,10 @@ internal sealed class MainWindow
         _pluginCountText = CreateValue("-");
         _parameterCountText = CreateValue("-");
         _logCountText = CreateValue("-");
+        _parameterKeyTextBox = CreateInput("Parameter key");
+        _parameterValueTextBox = CreateInput("Parameter value");
+        _parameterDescriptionTextBox = CreateInput("Description (optional)");
+        _parameterCategoryTextBox = CreateInput("Category (optional)");
         _detailText = new TextBlock
         {
             Text = "Select Refresh to query the server.",
@@ -79,6 +87,23 @@ internal sealed class MainWindow
         buttons.Children.Add(CreateButton("View logs", ShowLogsAsync));
         buttons.Children.Add(CreateButton("View routes", ShowRoutesAsync));
         root.Children.Add(buttons);
+
+        root.Children.Add(new TextBlock
+        {
+            Text = "Parameter editor",
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold
+        });
+        root.Children.Add(_parameterKeyTextBox);
+        root.Children.Add(_parameterValueTextBox);
+        root.Children.Add(_parameterDescriptionTextBox);
+        root.Children.Add(_parameterCategoryTextBox);
+
+        WrapPanel parameterButtons = new();
+        parameterButtons.Children.Add(CreateButton("Set parameter", SetParameterAsync));
+        parameterButtons.Children.Add(CreateButton("Delete parameter", DeleteParameterAsync));
+        parameterButtons.Children.Add(CreateButton("Refresh parameters", ShowParametersAsync));
+        root.Children.Add(parameterButtons);
 
         root.Children.Add(new Border
         {
@@ -174,11 +199,58 @@ internal sealed class MainWindow
         });
     }
 
+    private async Task SetParameterAsync()
+    {
+        string key = _parameterKeyTextBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            _detailText.Text = "A parameter key is required.";
+            return;
+        }
+
+        string value = _parameterValueTextBox.Text ?? string.Empty;
+        string? description = NullIfWhiteSpace(_parameterDescriptionTextBox.Text);
+        string? category = NullIfWhiteSpace(_parameterCategoryTextBox.Text);
+
+        await RunRequestAsync(async () =>
+        {
+            await _client.SetParameterAsync(
+                key,
+                value,
+                description,
+                category);
+            _detailText.Text = $"Parameter '{key}' was set successfully.";
+        });
+    }
+
+    private async Task DeleteParameterAsync()
+    {
+        string key = _parameterKeyTextBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            _detailText.Text = "A parameter key is required.";
+            return;
+        }
+
+        await RunRequestAsync(async () =>
+        {
+            await _client.DeleteParameterAsync(key);
+            _detailText.Text = $"Parameter '{key}' was deleted successfully.";
+        });
+    }
+
     private async Task RunRequestAsync(Func<Task> request)
     {
         try
         {
             await request();
+        }
+        catch (HttpRequestException exception) when (
+            exception.StatusCode is System.Net.HttpStatusCode.Unauthorized or
+            System.Net.HttpStatusCode.Forbidden)
+        {
+            _detailText.Text =
+                "This action requires a valid admin token. Token configuration is not available in the dashboard yet.";
         }
         catch (Exception exception) when (
             exception is HttpRequestException or TaskCanceledException or JsonException)
@@ -235,6 +307,21 @@ internal sealed class MainWindow
         {
             Text = text
         };
+    }
+
+    private static TextBox CreateInput(string watermark)
+    {
+        return new TextBox
+        {
+            PlaceholderText = watermark
+        };
+    }
+
+    private static string? NullIfWhiteSpace(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim();
     }
 
     private static string FormatPlugin(AdminPlugin plugin)
