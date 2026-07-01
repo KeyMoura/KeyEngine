@@ -7,8 +7,18 @@ namespace KeyEngine.Web.Admin;
 /// <summary>
 /// Maps basic engine administration routes onto an HTTP server.
 /// </summary>
+/// <remarks>
+/// Mutation routes require the <c>X-KeyEngine-Admin-Token</c> header only
+/// when the <c>admin.token</c> parameter is configured with a non-blank
+/// string value. When <c>admin.token</c> is missing or blank, mutation routes
+/// remain open for local development foundations.
+/// </remarks>
 public static class EngineAdminRoutes
 {
+    private const string AdminTokenParameterKey = "admin.token";
+
+    private const string AdminTokenHeaderName = "X-KeyEngine-Admin-Token";
+
     /// <summary>
     /// Maps the basic KeyEngine health, status, plugin diagnostic, and
     /// parameter routes.
@@ -138,6 +148,14 @@ public static class EngineAdminRoutes
         HttpRequestContext request,
         HttpResponseContext response)
     {
+        if (!AuthorizeMutation(
+                engine,
+                request,
+                response))
+        {
+            return;
+        }
+
         string key = request.RouteValues["key"];
 
         try
@@ -173,6 +191,14 @@ public static class EngineAdminRoutes
         HttpRequestContext request,
         HttpResponseContext response)
     {
+        if (!AuthorizeMutation(
+                engine,
+                request,
+                response))
+        {
+            return;
+        }
+
         try
         {
             string? path =
@@ -215,6 +241,14 @@ public static class EngineAdminRoutes
         HttpRequestContext request,
         HttpResponseContext response)
     {
+        if (!AuthorizeMutation(
+                engine,
+                request,
+                response))
+        {
+            return;
+        }
+
         try
         {
             string? path =
@@ -257,6 +291,14 @@ public static class EngineAdminRoutes
         HttpRequestContext request,
         HttpResponseContext response)
     {
+        if (!AuthorizeMutation(
+                engine,
+                request,
+                response))
+        {
+            return;
+        }
+
         try
         {
             ParameterWriteRequest? parameter =
@@ -301,6 +343,105 @@ public static class EngineAdminRoutes
                 400,
                 exception.Message);
         }
+    }
+
+    private static bool AuthorizeMutation(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        if (!TryGetConfiguredAdminToken(
+                engine,
+                out string? configuredToken,
+                out string? error))
+        {
+            WriteError(
+                engine,
+                response,
+                401,
+                error ?? "Admin mutation route is not authorized.");
+            return false;
+        }
+
+        if (configuredToken is null)
+        {
+            return true;
+        }
+
+        if (TryGetHeader(
+                request,
+                AdminTokenHeaderName,
+                out string? suppliedToken) &&
+            StringComparer.Ordinal.Equals(
+                configuredToken,
+                suppliedToken))
+        {
+            return true;
+        }
+
+        WriteError(
+            engine,
+            response,
+            401,
+            $"Admin mutation route requires a valid {AdminTokenHeaderName} header.");
+        return false;
+    }
+
+    private static bool TryGetConfiguredAdminToken(
+        Engine engine,
+        out string? token,
+        out string? error)
+    {
+        token = null;
+        error = null;
+
+        if (!engine.Parameters.Contains(AdminTokenParameterKey))
+        {
+            return true;
+        }
+
+        if (!engine.Parameters.TryGet(
+                AdminTokenParameterKey,
+                out string configuredToken))
+        {
+            error = $"Parameter '{AdminTokenParameterKey}' must be a string when configured.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(configuredToken))
+        {
+            return true;
+        }
+
+        token = configuredToken;
+        return true;
+    }
+
+    private static bool TryGetHeader(
+        HttpRequestContext request,
+        string name,
+        out string? value)
+    {
+        if (request.Headers.TryGetValue(
+                name,
+                out value))
+        {
+            return true;
+        }
+
+        foreach ((string key, string candidate) in request.Headers)
+        {
+            if (StringComparer.OrdinalIgnoreCase.Equals(
+                    key,
+                    name))
+            {
+                value = candidate;
+                return true;
+            }
+        }
+
+        value = null;
+        return false;
     }
 
     private static string? ReadPersistencePath(

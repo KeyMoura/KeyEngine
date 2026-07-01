@@ -205,6 +205,136 @@ public sealed class EngineAdminRoutesTests
     }
 
     [Fact]
+    public void MutationRoute_NoConfiguredAdminToken_SucceedsWithoutHeader()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreateParameterRequest("enabled"));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Equal(
+                "enabled",
+                engine.Parameters.Get<string>("feature.mode"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void MutationRoute_ConfiguredAdminToken_SucceedsWithCorrectHeader()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreateParameterRequest(
+                    "enabled",
+                    "secret"));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Equal(
+                "enabled",
+                engine.Parameters.Get<string>("feature.mode"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void MutationRoute_ConfiguredAdminToken_RejectsMissingHeader()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreateParameterRequest("enabled"));
+
+            Assert.Equal(401, response.StatusCode);
+            Assert.Contains("X-KeyEngine-Admin-Token", response.Body);
+            Assert.False(engine.Parameters.Contains("feature.mode"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void MutationRoute_ConfiguredAdminToken_RejectsWrongHeader()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreateParameterRequest(
+                    "enabled",
+                    "wrong"));
+
+            Assert.Equal(401, response.StatusCode);
+            Assert.Contains("X-KeyEngine-Admin-Token", response.Body);
+            Assert.False(engine.Parameters.Contains("feature.mode"));
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ReadOnlyRoute_ConfiguredAdminToken_RemainsAccessibleWithoutHeader()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("admin.token", "secret");
+            engine.Parameters.Set("feature.mode", "enabled");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/parameters"));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Contains("feature.mode", response.Body);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
     public void ParameterRoute_ReturnsSingleParameterOrNotFound()
     {
         Engine engine = TestEngineFactory.Create();
@@ -425,11 +555,21 @@ public sealed class EngineAdminRoutesTests
         return new HttpServer("http://127.0.0.1:8080/");
     }
 
-    private static HttpRequestContext CreateParameterRequest(string value)
+    private static HttpRequestContext CreateParameterRequest(
+        string value,
+        string? adminToken = null)
     {
+        Dictionary<string, string>? headers = adminToken is null
+            ? null
+            : new Dictionary<string, string>
+            {
+                ["X-KeyEngine-Admin-Token"] = adminToken
+            };
+
         return new HttpRequestContext(
             "POST",
             "/api/parameters",
+            headers: headers,
             body: $$"""
                 {
                   "key": "feature.mode",
