@@ -5,12 +5,13 @@ using System.Text.Json;
 namespace KeyEngine.Web.Admin;
 
 /// <summary>
-/// Maps read-only engine status routes onto an HTTP server.
+/// Maps basic engine administration routes onto an HTTP server.
 /// </summary>
 public static class EngineAdminRoutes
 {
     /// <summary>
-    /// Maps the basic KeyEngine health, status, and plugin diagnostic routes.
+    /// Maps the basic KeyEngine health, status, plugin diagnostic, and
+    /// parameter routes.
     /// </summary>
     /// <param name="server">
     /// The server that receives the routes.
@@ -78,6 +79,20 @@ public static class EngineAdminRoutes
         server.MapPost(
             "/api/parameters",
             (request, response) => SetParameter(
+                engine,
+                request,
+                response));
+
+        server.MapPost(
+            "/api/parameters/save",
+            (request, response) => SaveParameters(
+                engine,
+                request,
+                response));
+
+        server.MapPost(
+            "/api/parameters/load",
+            (request, response) => LoadParameters(
                 engine,
                 request,
                 response));
@@ -153,6 +168,90 @@ public static class EngineAdminRoutes
         }
     }
 
+    private static void SaveParameters(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        try
+        {
+            string? path =
+                ReadPersistencePath(
+                    engine,
+                    request,
+                    response);
+
+            if (path is null)
+            {
+                return;
+            }
+
+            engine.Parameters.Save(path);
+
+            response.Body = engine.Serializer.Serialize(new
+            {
+                Saved = true,
+                Path = path
+            });
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or
+            InvalidOperationException or
+            NotSupportedException or
+            JsonException or
+            FormatException or
+            IOException)
+        {
+            WriteError(
+                engine,
+                response,
+                400,
+                exception.Message);
+        }
+    }
+
+    private static void LoadParameters(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        try
+        {
+            string? path =
+                ReadPersistencePath(
+                    engine,
+                    request,
+                    response);
+
+            if (path is null)
+            {
+                return;
+            }
+
+            engine.Parameters.Load(path);
+
+            response.Body = engine.Serializer.Serialize(new
+            {
+                Loaded = true,
+                Path = path
+            });
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or
+            InvalidOperationException or
+            NotSupportedException or
+            JsonException or
+            FormatException or
+            IOException)
+        {
+            WriteError(
+                engine,
+                response,
+                400,
+                exception.Message);
+        }
+    }
+
     private static void SetParameter(
         Engine engine,
         HttpRequestContext request,
@@ -202,6 +301,29 @@ public static class EngineAdminRoutes
                 400,
                 exception.Message);
         }
+    }
+
+    private static string? ReadPersistencePath(
+        Engine engine,
+        HttpRequestContext request,
+        HttpResponseContext response)
+    {
+        ParameterPersistenceRequest? persistence =
+            engine.Serializer.Deserialize<ParameterPersistenceRequest>(
+                request.Body);
+
+        if (persistence is null ||
+            string.IsNullOrWhiteSpace(persistence.Path))
+        {
+            WriteError(
+                engine,
+                response,
+                400,
+                "The request must include a non-blank path.");
+            return null;
+        }
+
+        return persistence.Path;
     }
 
     private static void SetValue(
@@ -320,6 +442,11 @@ public static class EngineAdminRoutes
         public string? Category { get; init; }
 
         public bool IsReadOnly { get; init; }
+    }
+
+    private sealed class ParameterPersistenceRequest
+    {
+        public string? Path { get; init; }
     }
 
     private sealed class ParameterResponse

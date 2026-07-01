@@ -300,6 +300,126 @@ public sealed class EngineAdminRoutesTests
         }
     }
 
+    [Fact]
+    public void ParametersSave_BlankPath_ReturnsBadRequest()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreatePersistenceRequest(
+                    "/api/parameters/save",
+                    " "));
+
+            Assert.Equal(400, response.StatusCode);
+            Assert.Contains("path", response.Body);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParametersLoad_BlankPath_ReturnsBadRequest()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreatePersistenceRequest(
+                    "/api/parameters/load",
+                    " "));
+
+            Assert.Equal(400, response.StatusCode);
+            Assert.Contains("path", response.Body);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ParametersSave_SavesParametersSuccessfully()
+    {
+        string path = CreateTemporaryPath();
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set("feature.mode", "enabled");
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreatePersistenceRequest(
+                    "/api/parameters/save",
+                    path));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.True(File.Exists(path));
+            Assert.Contains("Saved", response.Body);
+        }
+        finally
+        {
+            engine.Shutdown();
+            DeleteTemporaryPath(path);
+        }
+    }
+
+    [Fact]
+    public void ParametersLoad_RestoresSavedParametersSuccessfully()
+    {
+        string path = CreateTemporaryPath();
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            engine.Parameters.Set(
+                "feature.mode",
+                "enabled",
+                "Feature mode",
+                "Features");
+            engine.Parameters.Save(path);
+            Assert.True(engine.Parameters.Remove("feature.mode"));
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                CreatePersistenceRequest(
+                    "/api/parameters/load",
+                    path));
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Equal(
+                "enabled",
+                engine.Parameters.Get<string>("feature.mode"));
+
+            var parameter = Assert.Single(
+                engine.Parameters.GetAll());
+            Assert.Equal("Feature mode", parameter.Description);
+            Assert.Equal("Features", parameter.Category);
+        }
+        finally
+        {
+            engine.Shutdown();
+            DeleteTemporaryPath(path);
+        }
+    }
+
     private static HttpServer CreateServer()
     {
         return new HttpServer("http://127.0.0.1:8080/");
@@ -318,5 +438,35 @@ public sealed class EngineAdminRoutesTests
                   "category": "Features"
                 }
                 """);
+    }
+
+    private static HttpRequestContext CreatePersistenceRequest(
+        string path,
+        string persistencePath)
+    {
+        string body = JsonSerializer.Serialize(new
+        {
+            Path = persistencePath
+        });
+
+        return new HttpRequestContext(
+            "POST",
+            path,
+            body: body);
+    }
+
+    private static string CreateTemporaryPath()
+    {
+        return Path.Combine(
+            Path.GetTempPath(),
+            $"{Guid.NewGuid():N}.parameters.json");
+    }
+
+    private static void DeleteTemporaryPath(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
     }
 }
