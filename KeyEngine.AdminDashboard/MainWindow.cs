@@ -80,89 +80,61 @@ internal sealed class MainWindow
             FontSize = 24,
             FontWeight = FontWeight.SemiBold
         });
-        root.Children.Add(CreateRow("Server URL", serverUri.ToString()));
-        root.Children.Add(CreateRow("Connection", _connectionText));
-        root.Children.Add(CreateRow("Application", _applicationText));
-        root.Children.Add(CreateRow("Engine state", _engineStateText));
-        root.Children.Add(CreateRow("Plugins", _pluginCountText));
-        root.Children.Add(CreateRow("Parameters", _parameterCountText));
-        root.Children.Add(CreateRow("Runtime logs", _logCountText));
 
-        WrapPanel buttons = new()
-        {
-            Orientation = Orientation.Horizontal
-        };
-        buttons.Children.Add(CreateButton("Refresh", RefreshStatusAsync));
-        buttons.Children.Add(CreateButton("View plugins", ShowPluginsAsync));
-        buttons.Children.Add(CreateButton("View parameters", ShowParametersAsync));
-        buttons.Children.Add(CreateButton("View logs", ShowLogsAsync));
-        buttons.Children.Add(CreateButton("View routes", ShowRoutesAsync));
-        root.Children.Add(buttons);
+        root.Children.Add(CreateActivityPanel());
 
-        root.Children.Add(new TextBlock
-        {
-            Text = "Admin token",
-            FontSize = 18,
-            FontWeight = FontWeight.SemiBold
-        });
-        root.Children.Add(CreateRow("Token status", _adminTokenStatusText));
-        root.Children.Add(_adminTokenTextBox);
-        root.Children.Add(CreateButton("Apply token", ApplyAdminTokenAsync));
+        root.Children.Add(CreateSection(
+            "Connection",
+            CreateRow("Server URL", serverUri.ToString()),
+            CreateRow("Connection", _connectionText),
+            CreateRow("Token status", _adminTokenStatusText),
+            _adminTokenTextBox,
+            CreateButtonRow(CreateButton("Apply token", ApplyAdminTokenAsync))));
 
-        root.Children.Add(new TextBlock
-        {
-            Text = "Parameter editor",
-            FontSize = 18,
-            FontWeight = FontWeight.SemiBold
-        });
-        root.Children.Add(_parameterKeyTextBox);
-        root.Children.Add(_parameterValueTextBox);
-        root.Children.Add(_parameterDescriptionTextBox);
-        root.Children.Add(_parameterCategoryTextBox);
+        root.Children.Add(CreateSection(
+            "Status",
+            CreateRow("Application", _applicationText),
+            CreateRow("Engine state", _engineStateText),
+            CreateRow("Plugins", _pluginCountText),
+            CreateRow("Parameters", _parameterCountText),
+            CreateRow("Runtime logs", _logCountText),
+            CreateButtonRow(CreateButton("Refresh", RefreshStatusAsync))));
 
-        WrapPanel parameterButtons = new();
-        parameterButtons.Children.Add(CreateButton("Set parameter", SetParameterAsync));
-        parameterButtons.Children.Add(CreateButton("Delete parameter", DeleteParameterAsync));
-        parameterButtons.Children.Add(CreateButton("Refresh parameters", ShowParametersAsync));
-        root.Children.Add(parameterButtons);
-
-        root.Children.Add(new TextBlock
-        {
-            Text = "Parameter persistence",
-            FontSize = 18,
-            FontWeight = FontWeight.SemiBold
-        });
-        root.Children.Add(_parameterPersistencePathTextBox);
-
-        WrapPanel persistenceButtons = new();
-        persistenceButtons.Children.Add(CreateButton("Save parameters", SaveParametersAsync));
-        persistenceButtons.Children.Add(CreateButton("Load parameters", LoadParametersAsync));
-        root.Children.Add(persistenceButtons);
-
-        root.Children.Add(new TextBlock
-        {
-            Text = "Runtime logs",
-            FontSize = 18,
-            FontWeight = FontWeight.SemiBold
-        });
-
-        WrapPanel logButtons = new();
-        logButtons.Children.Add(CreateButton("Refresh logs", ShowLogsAsync));
-        logButtons.Children.Add(CreateButton("Clear logs", ClearLogsAsync));
-        root.Children.Add(logButtons);
-
-        root.Children.Add(new Border
-        {
-            BorderBrush = Brushes.Gray,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(12),
-            Child = new ScrollViewer
+        root.Children.Add(CreateSection(
+            "Parameters",
+            _parameterKeyTextBox,
+            _parameterValueTextBox,
+            _parameterDescriptionTextBox,
+            _parameterCategoryTextBox,
+            CreateButtonRow(
+                CreateButton("Set parameter", SetParameterAsync),
+                CreateButton("Delete parameter", DeleteParameterAsync),
+                CreateButton("View parameters", ShowParametersAsync),
+                CreateButton("Refresh parameters", ShowParametersAsync)),
+            new TextBlock
             {
-                Content = _detailText,
-                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
-            }
-        });
+                Text = "Persistence",
+                FontWeight = FontWeight.SemiBold
+            },
+            _parameterPersistencePathTextBox,
+            CreateButtonRow(
+                CreateButton("Save parameters", SaveParametersAsync),
+                CreateButton("Load parameters", LoadParametersAsync))));
+
+        root.Children.Add(CreateSection(
+            "Logs",
+            CreateButtonRow(
+                CreateButton("View logs", ShowLogsAsync),
+                CreateButton("Refresh logs", ShowLogsAsync),
+                CreateButton("Clear logs", ClearLogsAsync))));
+
+        root.Children.Add(CreateSection(
+            "Plugins",
+            CreateButtonRow(CreateButton("View plugins", ShowPluginsAsync))));
+
+        root.Children.Add(CreateSection(
+            "Routes",
+            CreateButtonRow(CreateButton("View routes", ShowRoutesAsync))));
 
         return root;
     }
@@ -389,6 +361,76 @@ internal sealed class MainWindow
         };
         button.Click += async (_, _) => await action();
         return button;
+    }
+
+    private Control CreateActivityPanel()
+    {
+        StackPanel content = new()
+        {
+            Spacing = 8
+        };
+        content.Children.Add(new TextBlock
+        {
+            Text = "Activity",
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold
+        });
+        content.Children.Add(_detailText);
+
+        return new Border
+        {
+            BorderBrush = Brushes.SteelBlue,
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12),
+            MinHeight = 90,
+            Child = content
+        };
+    }
+
+    private static Control CreateSection(
+        string title,
+        params Control[] controls)
+    {
+        StackPanel content = new()
+        {
+            Spacing = 10
+        };
+        content.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold
+        });
+
+        foreach (Control control in controls)
+        {
+            content.Children.Add(control);
+        }
+
+        return new Border
+        {
+            BorderBrush = Brushes.Gray,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(14),
+            Child = content
+        };
+    }
+
+    private static Control CreateButtonRow(params Button[] buttons)
+    {
+        WrapPanel row = new()
+        {
+            Orientation = Orientation.Horizontal
+        };
+
+        foreach (Button button in buttons)
+        {
+            row.Children.Add(button);
+        }
+
+        return row;
     }
 
     private static Control CreateRow(
