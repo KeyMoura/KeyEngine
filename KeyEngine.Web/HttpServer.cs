@@ -18,6 +18,7 @@ public sealed class HttpServer
     private readonly HttpListener _listener = new();
     private readonly Dictionary<(string Method, string Path), RouteHandler>
         _routes = [];
+    private readonly List<RouteInfo> _routeInfo = [];
     private readonly List<ParameterizedRoute> _parameterizedRoutes = [];
 
     private CancellationTokenSource? _cancellation;
@@ -96,18 +97,33 @@ public sealed class HttpServer
     /// <param name="handler">
     /// The synchronous route handler.
     /// </param>
+    /// <param name="description">
+    /// An optional route description for route discovery.
+    /// </param>
+    /// <param name="requiresAdminToken">
+    /// Whether the route is expected to require the admin token.
+    /// </param>
+    /// <param name="category">
+    /// An optional route category for route discovery.
+    /// </param>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the server is running or the route is already registered.
     /// </exception>
     public void Register(
         string method,
         string path,
-        RouteHandler handler)
+        RouteHandler handler,
+        string? description = null,
+        bool requiresAdminToken = false,
+        string? category = null)
     {
         Map(
             method,
             path,
-            handler);
+            handler,
+            description,
+            requiresAdminToken,
+            category);
     }
 
     /// <summary>
@@ -122,13 +138,25 @@ public sealed class HttpServer
     /// <param name="handler">
     /// The synchronous route handler.
     /// </param>
+    /// <param name="description">
+    /// An optional route description for route discovery.
+    /// </param>
+    /// <param name="requiresAdminToken">
+    /// Whether the route is expected to require the admin token.
+    /// </param>
+    /// <param name="category">
+    /// An optional route category for route discovery.
+    /// </param>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the server is running or the route is already registered.
     /// </exception>
     public void Map(
         string method,
         string path,
-        RouteHandler handler)
+        RouteHandler handler,
+        string? description = null,
+        bool requiresAdminToken = false,
+        string? category = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(method);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -173,6 +201,12 @@ public sealed class HttpServer
                 Segments = segments,
                 Handler = handler
             });
+            _routeInfo.Add(new RouteInfo(
+                normalizedMethod,
+                path,
+                description,
+                requiresAdminToken,
+                category));
             return;
         }
 
@@ -186,6 +220,13 @@ public sealed class HttpServer
             throw new InvalidOperationException(
                 $"The route '{route.Method} {route.Path}' is already registered.");
         }
+
+        _routeInfo.Add(new RouteInfo(
+            normalizedMethod,
+            path,
+            description,
+            requiresAdminToken,
+            category));
     }
 
     /// <summary>
@@ -197,14 +238,29 @@ public sealed class HttpServer
     /// <param name="handler">
     /// The synchronous route handler.
     /// </param>
+    /// <param name="description">
+    /// An optional route description for route discovery.
+    /// </param>
+    /// <param name="requiresAdminToken">
+    /// Whether the route is expected to require the admin token.
+    /// </param>
+    /// <param name="category">
+    /// An optional route category for route discovery.
+    /// </param>
     public void MapGet(
         string path,
-        RouteHandler handler)
+        RouteHandler handler,
+        string? description = null,
+        bool requiresAdminToken = false,
+        string? category = null)
     {
         Map(
             "GET",
             path,
-            handler);
+            handler,
+            description,
+            requiresAdminToken,
+            category);
     }
 
     /// <summary>
@@ -216,14 +272,40 @@ public sealed class HttpServer
     /// <param name="handler">
     /// The synchronous route handler.
     /// </param>
+    /// <param name="description">
+    /// An optional route description for route discovery.
+    /// </param>
+    /// <param name="requiresAdminToken">
+    /// Whether the route is expected to require the admin token.
+    /// </param>
+    /// <param name="category">
+    /// An optional route category for route discovery.
+    /// </param>
     public void MapPost(
         string path,
-        RouteHandler handler)
+        RouteHandler handler,
+        string? description = null,
+        bool requiresAdminToken = false,
+        string? category = null)
     {
         Map(
             "POST",
             path,
-            handler);
+            handler,
+            description,
+            requiresAdminToken,
+            category);
+    }
+
+    /// <summary>
+    /// Gets safe metadata for all registered routes.
+    /// </summary>
+    /// <returns>
+    /// Registered route metadata in registration order.
+    /// </returns>
+    public IReadOnlyList<RouteInfo> GetRoutes()
+    {
+        return _routeInfo.ToArray();
     }
 
     /// <summary>

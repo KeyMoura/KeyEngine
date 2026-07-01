@@ -39,7 +39,9 @@ public static class EngineAdminRoutes
 
         server.MapGet(
             "/api/health",
-            (_, response) => response.Body = "OK");
+            (_, response) => response.Body = "OK",
+            "Returns admin API health.",
+            category: "Health");
 
         server.MapGet(
             "/api/status",
@@ -66,7 +68,9 @@ public static class EngineAdminRoutes
                     OSDescription = RuntimeInformation.OSDescription,
                     WorkingDirectory = Environment.CurrentDirectory
                 });
-            });
+            },
+            "Returns safe runtime status information.",
+            category: "Diagnostics");
 
         server.MapGet(
             "/api/plugins",
@@ -80,12 +84,16 @@ public static class EngineAdminRoutes
                     plugin.DependencyCount,
                     plugin.LoadBeforeCount,
                     plugin.LoadAfterCount
-                }).ToArray()));
+                }).ToArray()),
+            "Returns safe plugin diagnostics.",
+            category: "Diagnostics");
 
         server.MapGet(
             "/api/logs",
             (_, response) => response.Body = engine.Serializer.Serialize(
-                engine.Logs.GetRecent()));
+                engine.Logs.GetRecent()),
+            "Returns recent runtime log entries.",
+            category: "Diagnostics");
 
         server.Map(
             "DELETE",
@@ -93,42 +101,65 @@ public static class EngineAdminRoutes
             (request, response) => ClearLogs(
                 engine,
                 request,
-                response));
+                response),
+            "Clears recent runtime log entries.",
+            requiresAdminToken: true,
+            category: "Diagnostics");
+
+        server.MapGet(
+            "/api/routes",
+            (_, response) => response.Body = engine.Serializer.Serialize(
+                server.GetRoutes()),
+            "Returns registered route metadata.",
+            category: "Routes");
 
         server.MapGet(
             "/api/parameters",
             (_, response) => response.Body = engine.Serializer.Serialize(
                 engine.Parameters.GetAll()
                     .Select(CreateParameterResponse)
-                    .ToArray()));
+                    .ToArray()),
+            "Returns all runtime parameters.",
+            category: "Parameters");
 
         server.MapGet(
             "/api/parameters/{key}",
             (request, response) => GetParameter(
                 engine,
                 request,
-                response));
+                response),
+            "Returns one runtime parameter.",
+            category: "Parameters");
 
         server.MapPost(
             "/api/parameters",
             (request, response) => SetParameter(
                 engine,
                 request,
-                response));
+                response),
+            "Creates or updates a runtime parameter.",
+            requiresAdminToken: true,
+            category: "Parameters");
 
         server.MapPost(
             "/api/parameters/save",
             (request, response) => SaveParameters(
                 engine,
                 request,
-                response));
+                response),
+            "Saves runtime parameters to a file.",
+            requiresAdminToken: true,
+            category: "Parameters");
 
         server.MapPost(
             "/api/parameters/load",
             (request, response) => LoadParameters(
                 engine,
                 request,
-                response));
+                response),
+            "Loads runtime parameters from a file.",
+            requiresAdminToken: true,
+            category: "Parameters");
 
         server.Map(
             "DELETE",
@@ -136,7 +167,10 @@ public static class EngineAdminRoutes
             (request, response) => DeleteParameter(
                 engine,
                 request,
-                response));
+                response),
+            "Removes one runtime parameter.",
+            requiresAdminToken: true,
+            category: "Parameters");
     }
 
     private static void ClearLogs(

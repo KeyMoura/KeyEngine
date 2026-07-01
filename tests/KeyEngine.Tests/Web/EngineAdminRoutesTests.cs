@@ -184,6 +184,99 @@ public sealed class EngineAdminRoutesTests
     }
 
     [Fact]
+    public void RoutesRoute_ReturnsRegisteredRouteMetadata()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/routes"));
+            using JsonDocument json = JsonDocument.Parse(response.Body);
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.Contains(
+                json.RootElement.EnumerateArray(),
+                route =>
+                    route.GetProperty("Method").GetString() == "GET" &&
+                    route.GetProperty("Path").GetString() == "/api/status");
+            Assert.Contains(
+                json.RootElement.EnumerateArray(),
+                route =>
+                    route.GetProperty("Method").GetString() == "GET" &&
+                    route.GetProperty("Path").GetString() == "/api/parameters");
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void RoutesRoute_MarksMutationRoutesAsRequiringAdminToken()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/routes"));
+            using JsonDocument json = JsonDocument.Parse(response.Body);
+
+            JsonElement mutationRoute = json.RootElement
+                .EnumerateArray()
+                .Single(route =>
+                    route.GetProperty("Method").GetString() == "POST" &&
+                    route.GetProperty("Path").GetString() == "/api/parameters");
+
+            Assert.True(mutationRoute.GetProperty("RequiresAdminToken").GetBoolean());
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void RoutesRoute_DoesNotExposeHandlerInternals()
+    {
+        Engine engine = TestEngineFactory.Create();
+        using HttpServer server = CreateServer();
+
+        try
+        {
+            engine.Initialize();
+            EngineAdminRoutes.Map(server, engine);
+
+            HttpResponseContext response = server.Dispatch(
+                new HttpRequestContext("GET", "/api/routes"));
+            using JsonDocument json = JsonDocument.Parse(response.Body);
+            JsonElement route = json.RootElement.EnumerateArray().First();
+
+            Assert.Equal(200, response.StatusCode);
+            Assert.True(route.TryGetProperty("Method", out _));
+            Assert.True(route.TryGetProperty("Path", out _));
+            Assert.True(route.TryGetProperty("Description", out _));
+            Assert.True(route.TryGetProperty("RequiresAdminToken", out _));
+            Assert.True(route.TryGetProperty("Category", out _));
+            Assert.False(route.TryGetProperty("Handler", out _));
+            Assert.DoesNotContain("RouteHandler", response.Body);
+        }
+        finally
+        {
+            engine.Shutdown();
+        }
+    }
+
+    [Fact]
     public void LogsDelete_ConfiguredAdminToken_RejectsMissingHeader()
     {
         Engine engine = TestEngineFactory.Create();
