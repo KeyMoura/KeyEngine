@@ -1,3 +1,6 @@
+using KeyEngine.Abstractions;
+using KeyEngine.Configuration;
+using KeyEngine.Plugins;
 using KeyEngine.Web;
 using System.Net;
 using System.Net.Sockets;
@@ -7,11 +10,10 @@ namespace KeyEngine.Tests.Web;
 public sealed class HttpServerTests
 {
     [Fact]
-    public void Register_RouteDispatchesToHandler()
+    public void MapGet_RouteDispatchesToHandler()
     {
         using HttpServer server = CreateServer();
-        server.Register(
-            "GET",
+        server.MapGet(
             "/health",
             (_, response) => response.Body = "OK");
 
@@ -20,6 +22,22 @@ public sealed class HttpServerTests
 
         Assert.Equal(200, response.StatusCode);
         Assert.Equal("OK", response.Body);
+    }
+
+    [Fact]
+    public void MapGet_DuplicateRoute_ThrowsClearException()
+    {
+        using HttpServer server = CreateServer();
+        server.MapGet(
+            "/health",
+            (_, response) => response.Body = "first");
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => server.MapGet(
+                "/health",
+                (_, response) => response.Body = "second"));
+
+        Assert.Contains("GET /health", exception.Message);
     }
 
     [Theory]
@@ -91,6 +109,39 @@ public sealed class HttpServerTests
         Assert.False(server.IsRunning);
     }
 
+    [Fact]
+    public void PluginRegisteredServer_IsInjectedIntoSystemForRouteRegistration()
+    {
+        using HttpServer server = CreateServer();
+        PluginContext context = new()
+        {
+            Manifest = new PluginManifest
+            {
+                Id = "web-test",
+                Main = typeof(InjectedRouteSystem).FullName!,
+                Name = "Web Test"
+            },
+            PluginDirectory = string.Empty,
+            Configuration = new StubConfigurationManager()
+        };
+
+        PluginBuilder builder = new(context);
+        builder.AddSingleton(server);
+        builder.AddSystem<InjectedRouteSystem>();
+
+        InjectedRouteSystem system =
+            (InjectedRouteSystem)builder.Services
+                .Build()
+                .GetService(typeof(InjectedRouteSystem));
+
+        system.Start();
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext("GET", "/plugin"));
+
+        Assert.Equal("plugin route", response.Body);
+    }
+
     private static HttpServer CreateServer()
     {
         return new HttpServer("http://127.0.0.1:8080/");
@@ -111,6 +162,38 @@ public sealed class HttpServerTests
         finally
         {
             listener.Stop();
+        }
+    }
+
+    private sealed class InjectedRouteSystem
+        : IEngineSystem
+    {
+        private readonly HttpServer _server;
+
+        public InjectedRouteSystem(HttpServer server)
+        {
+            _server = server;
+        }
+
+        public void Start()
+        {
+            _server.MapGet(
+                "/plugin",
+                (_, response) => response.Body = "plugin route");
+        }
+    }
+
+    private sealed class StubConfigurationManager
+        : IConfigurationManager
+    {
+        public T Get<T>()
+            where T : class, new()
+        {
+            return new T();
+        }
+
+        public void Save()
+        {
         }
     }
 }

@@ -72,6 +72,13 @@ internal sealed class PluginBuilder : IPluginBuilder
     }
 
     /// <inheritdoc/>
+    public void AddSingleton<TService>(TService instance)
+        where TService : class
+    {
+        _services.AddSingleton(instance);
+    }
+
+    /// <inheritdoc/>
     public void AddSingleton<TService, TImplementation>()
         where TImplementation : class, TService
     {

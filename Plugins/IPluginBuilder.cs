@@ -35,6 +35,18 @@ public interface IPluginBuilder
         where TService : class;
 
     /// <summary>
+    /// Registers an existing singleton service instance.
+    /// </summary>
+    /// <typeparam name="TService">
+    /// The service type.
+    /// </typeparam>
+    /// <param name="instance">
+    /// The singleton instance.
+    /// </param>
+    void AddSingleton<TService>(TService instance)
+        where TService : class;
+
+    /// <summary>
     /// Registers a singleton service.
     /// </summary>
     /// <typeparam name="TService">

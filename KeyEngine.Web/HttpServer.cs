@@ -85,6 +85,32 @@ public sealed class HttpServer
         string path,
         RouteHandler handler)
     {
+        Map(
+            method,
+            path,
+            handler);
+    }
+
+    /// <summary>
+    /// Maps an exact HTTP method and path route.
+    /// </summary>
+    /// <param name="method">
+    /// The HTTP method.
+    /// </param>
+    /// <param name="path">
+    /// The exact absolute path beginning with <c>/</c>.
+    /// </param>
+    /// <param name="handler">
+    /// The synchronous route handler.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the server is running or the route is already registered.
+    /// </exception>
+    public void Map(
+        string method,
+        string path,
+        RouteHandler handler)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(method);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(handler);
@@ -116,6 +142,44 @@ public sealed class HttpServer
             throw new InvalidOperationException(
                 $"The route '{route.Method} {route.Path}' is already registered.");
         }
+    }
+
+    /// <summary>
+    /// Maps an exact GET route.
+    /// </summary>
+    /// <param name="path">
+    /// The exact absolute path beginning with <c>/</c>.
+    /// </param>
+    /// <param name="handler">
+    /// The synchronous route handler.
+    /// </param>
+    public void MapGet(
+        string path,
+        RouteHandler handler)
+    {
+        Map(
+            "GET",
+            path,
+            handler);
+    }
+
+    /// <summary>
+    /// Maps an exact POST route.
+    /// </summary>
+    /// <param name="path">
+    /// The exact absolute path beginning with <c>/</c>.
+    /// </param>
+    /// <param name="handler">
+    /// The synchronous route handler.
+    /// </param>
+    public void MapPost(
+        string path,
+        RouteHandler handler)
+    {
+        Map(
+            "POST",
+            path,
+            handler);
     }
 
     /// <summary>
