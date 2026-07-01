@@ -20,6 +20,7 @@ public sealed class HttpServer
         _routes = [];
     private readonly List<RouteInfo> _routeInfo = [];
     private readonly List<ParameterizedRoute> _parameterizedRoutes = [];
+    private readonly List<StaticFileMapping> _staticFileMappings = [];
 
     private CancellationTokenSource? _cancellation;
     private Task? _listenTask;
@@ -298,6 +299,70 @@ public sealed class HttpServer
     }
 
     /// <summary>
+    /// Maps unmatched GET requests under a URL prefix to files in a local
+    /// directory.
+    /// </summary>
+    /// <param name="urlPrefix">
+    /// The absolute URL path prefix, such as <c>/</c> or <c>/assets/</c>.
+    /// </param>
+    /// <param name="directory">
+    /// The local directory that contains the static files.
+    /// </param>
+    /// <remarks>
+    /// Explicit and parameterized routes take precedence over static files.
+    /// Directory root requests serve <c>index.html</c> when it exists.
+    /// Files outside the mapped directory cannot be served.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the URL prefix or directory is blank or invalid.
+    /// </exception>
+    /// <exception cref="DirectoryNotFoundException">
+    /// Thrown when the static directory does not exist.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the server is running or the URL prefix is already mapped.
+    /// </exception>
+    public void MapStaticFiles(
+        string urlPrefix,
+        string directory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(urlPrefix);
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+
+        ThrowIfDisposed();
+
+        if (IsRunning)
+        {
+            throw new InvalidOperationException(
+                "Static files cannot be mapped while the server is running.");
+        }
+
+        string normalizedPrefix = NormalizeStaticUrlPrefix(urlPrefix);
+        string rootDirectory = Path.GetFullPath(directory);
+
+        if (!Directory.Exists(rootDirectory))
+        {
+            throw new DirectoryNotFoundException(
+                $"The static file directory '{rootDirectory}' does not exist.");
+        }
+
+        if (_staticFileMappings.Any(mapping =>
+                StringComparer.Ordinal.Equals(
+                    mapping.UrlPrefix,
+                    normalizedPrefix)))
+        {
+            throw new InvalidOperationException(
+                $"Static files are already mapped for '{normalizedPrefix}'.");
+        }
+
+        _staticFileMappings.Add(new StaticFileMapping(
+            normalizedPrefix,
+            rootDirectory));
+        _staticFileMappings.Sort((left, right) =>
+            right.UrlPrefix.Length.CompareTo(left.UrlPrefix.Length));
+    }
+
+    /// <summary>
     /// Gets safe metadata for all registered routes.
     /// </summary>
     /// <returns>
@@ -392,6 +457,17 @@ public sealed class HttpServer
             return response;
         }
 
+        foreach (StaticFileMapping mapping in _staticFileMappings)
+        {
+            if (TryServeStaticFile(
+                    request,
+                    mapping,
+                    response))
+            {
+                return response;
+            }
+        }
+
         response.StatusCode = 404;
         response.Body = "Not Found";
         return response;
@@ -439,10 +515,10 @@ public sealed class HttpServer
             };
         }
 
-        byte[] body = Encoding.UTF8.GetBytes(response.Body);
+        byte[] body = response.GetBodyBytes();
 
         context.Response.StatusCode = response.StatusCode;
-        context.Response.ContentType = "text/plain; charset=utf-8";
+        context.Response.ContentType = response.ContentType;
         context.Response.ContentEncoding = Encoding.UTF8;
         context.Response.ContentLength64 = body.Length;
 
@@ -601,6 +677,140 @@ public sealed class HttpServer
             StringSplitOptions.None);
     }
 
+    private static bool TryServeStaticFile(
+        HttpRequestContext request,
+        StaticFileMapping mapping,
+        HttpResponseContext response)
+    {
+        if (request.Method != "GET")
+        {
+            return false;
+        }
+
+        string requestPath;
+
+        try
+        {
+            requestPath = Uri.UnescapeDataString(request.Path);
+        }
+        catch (UriFormatException)
+        {
+            return SetStaticNotFound(response);
+        }
+
+        string prefixRoot = mapping.UrlPrefix == "/"
+            ? "/"
+            : mapping.UrlPrefix.TrimEnd('/');
+
+        string relativePath;
+
+        if (requestPath == prefixRoot)
+        {
+            relativePath = string.Empty;
+        }
+        else if (requestPath.StartsWith(
+                     mapping.UrlPrefix,
+                     StringComparison.Ordinal))
+        {
+            relativePath = requestPath[mapping.UrlPrefix.Length..];
+        }
+        else
+        {
+            return false;
+        }
+
+        if (relativePath.Contains('\\'))
+        {
+            return SetStaticNotFound(response);
+        }
+
+        string[] segments = relativePath.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries);
+
+        if (segments.Any(segment => segment is "." or ".."))
+        {
+            return SetStaticNotFound(response);
+        }
+
+        string localRelativePath = Path.Combine(segments);
+
+        if (relativePath.Length == 0 ||
+            requestPath.EndsWith("/", StringComparison.Ordinal))
+        {
+            localRelativePath = Path.Combine(
+                localRelativePath,
+                "index.html");
+        }
+
+        string filePath = Path.GetFullPath(
+            Path.Combine(
+                mapping.RootDirectory,
+                localRelativePath));
+
+        string rootWithSeparator =
+            Path.TrimEndingDirectorySeparator(mapping.RootDirectory) +
+            Path.DirectorySeparatorChar;
+        StringComparison pathComparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        if (!filePath.StartsWith(
+                rootWithSeparator,
+                pathComparison) ||
+            !File.Exists(filePath))
+        {
+            return SetStaticNotFound(response);
+        }
+
+        response.SetBody(
+            File.ReadAllBytes(filePath),
+            GetContentType(filePath));
+        return true;
+    }
+
+    private static bool SetStaticNotFound(HttpResponseContext response)
+    {
+        response.StatusCode = 404;
+        response.Body = "Not Found";
+        return true;
+    }
+
+    private static string NormalizeStaticUrlPrefix(string urlPrefix)
+    {
+        if (!urlPrefix.StartsWith("/", StringComparison.Ordinal) ||
+            urlPrefix.Contains('\\') ||
+            urlPrefix.Contains('?') ||
+            urlPrefix.Contains('#'))
+        {
+            throw new ArgumentException(
+                "The static URL prefix must be an absolute path beginning with '/'.",
+                nameof(urlPrefix));
+        }
+
+        return urlPrefix == "/" ||
+               urlPrefix.EndsWith("/", StringComparison.Ordinal)
+            ? urlPrefix
+            : urlPrefix + "/";
+    }
+
+    private static string GetContentType(string filePath)
+    {
+        return Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".html" => "text/html; charset=utf-8",
+            ".css" => "text/css; charset=utf-8",
+            ".js" => "text/javascript; charset=utf-8",
+            ".json" => "application/json; charset=utf-8",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".svg" => "image/svg+xml",
+            ".ico" => "image/x-icon",
+            ".txt" => "text/plain; charset=utf-8",
+            _ => "application/octet-stream"
+        };
+    }
+
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(
@@ -641,4 +851,8 @@ public sealed class HttpServer
     private readonly record struct RouteSegment(
         string Value,
         bool IsParameter);
+
+    private sealed record StaticFileMapping(
+        string UrlPrefix,
+        string RootDirectory);
 }

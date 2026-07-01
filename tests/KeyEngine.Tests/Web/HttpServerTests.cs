@@ -135,6 +135,83 @@ public sealed class HttpServerTests
     }
 
     [Fact]
+    public void StaticFiles_ExistingFile_IsServed()
+    {
+        using TemporaryStaticSite site = new();
+        site.WriteFile("hello.txt", "Hello from KeyEngine");
+        using HttpServer server = CreateServer();
+        server.MapStaticFiles("/", site.StaticRoot);
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext("GET", "/hello.txt"));
+
+        Assert.Equal(200, response.StatusCode);
+        Assert.Equal("Hello from KeyEngine", response.Body);
+        Assert.Equal("text/plain; charset=utf-8", response.ContentType);
+    }
+
+    [Fact]
+    public void StaticFiles_RootRequest_ServesIndexHtml()
+    {
+        using TemporaryStaticSite site = new();
+        site.WriteFile("index.html", "<h1>KeyEngine</h1>");
+        using HttpServer server = CreateServer();
+        server.MapStaticFiles("/", site.StaticRoot);
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext("GET", "/"));
+
+        Assert.Equal(200, response.StatusCode);
+        Assert.Equal("<h1>KeyEngine</h1>", response.Body);
+        Assert.Equal("text/html; charset=utf-8", response.ContentType);
+    }
+
+    [Fact]
+    public void StaticFiles_MissingFile_ReturnsNotFound()
+    {
+        using TemporaryStaticSite site = new();
+        using HttpServer server = CreateServer();
+        server.MapStaticFiles("/", site.StaticRoot);
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext("GET", "/missing.txt"));
+
+        Assert.Equal(404, response.StatusCode);
+    }
+
+    [Fact]
+    public void StaticFiles_PathTraversal_IsRejected()
+    {
+        using TemporaryStaticSite site = new();
+        site.WriteOutsideFile("secret.txt", "secret");
+        using HttpServer server = CreateServer();
+        server.MapStaticFiles("/", site.StaticRoot);
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext("GET", "/%2e%2e/secret.txt"));
+
+        Assert.Equal(404, response.StatusCode);
+        Assert.NotEqual("secret", response.Body);
+    }
+
+    [Fact]
+    public void StaticFiles_ExactApiRoute_TakesPrecedence()
+    {
+        using TemporaryStaticSite site = new();
+        site.WriteFile("index.html", "static");
+        using HttpServer server = CreateServer();
+        server.MapStaticFiles("/", site.StaticRoot);
+        server.MapGet(
+            "/",
+            (_, response) => response.Body = "API route");
+
+        HttpResponseContext response = server.Dispatch(
+            new HttpRequestContext("GET", "/"));
+
+        Assert.Equal("API route", response.Body);
+    }
+
+    [Fact]
     public void StartAndStop_UpdatesRunningState()
     {
         int port = GetAvailablePort();
@@ -252,6 +329,46 @@ public sealed class HttpServerTests
 
         public void Save()
         {
+        }
+    }
+
+    private sealed class TemporaryStaticSite
+        : IDisposable
+    {
+        private readonly string _root = Path.Combine(
+            Path.GetTempPath(),
+            $"KeyEngine.Tests.{Guid.NewGuid():N}");
+
+        public string StaticRoot => Path.Combine(_root, "wwwroot");
+
+        public TemporaryStaticSite()
+        {
+            Directory.CreateDirectory(StaticRoot);
+        }
+
+        public void WriteFile(
+            string relativePath,
+            string contents)
+        {
+            File.WriteAllText(
+                Path.Combine(StaticRoot, relativePath),
+                contents);
+        }
+
+        public void WriteOutsideFile(
+            string fileName,
+            string contents)
+        {
+            File.WriteAllText(
+                Path.Combine(_root, fileName),
+                contents);
+        }
+
+        public void Dispose()
+        {
+            Directory.Delete(
+                _root,
+                true);
         }
     }
 }
